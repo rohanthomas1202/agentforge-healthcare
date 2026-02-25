@@ -5,8 +5,11 @@ This module handles:
 2. Automatically refreshing the token when it expires
 3. Making authenticated FHIR API requests
 4. Returning parsed JSON responses
+
+When USE_MOCK_DATA=true, a MockFHIRClient is used instead (no OpenEMR needed).
 """
 
+import os
 import time
 from typing import Any, Optional
 
@@ -191,5 +194,10 @@ class FHIRClient:
         await self._http.aclose()
 
 
-# Singleton instance — shared across the application
-fhir_client = FHIRClient()
+# Singleton instance — use MockFHIRClient when USE_MOCK_DATA is set
+if os.getenv("USE_MOCK_DATA", "").lower() in ("true", "1", "yes"):
+    from app.mock_fhir_client import MockFHIRClient
+    fhir_client = MockFHIRClient()  # type: ignore[assignment]
+    print("[startup] Using MOCK data (no OpenEMR connection)")
+else:
+    fhir_client = FHIRClient()
