@@ -125,15 +125,44 @@ All three verifiers run synchronously via `run_verification_pipeline()`. Results
 - Latency (target: <5s single-tool, <15s multi-step)
 - Verification safety flags
 
+### Evaluation Results (57 cases, 100% pass rate)
+
+| Category | Passed | Total | Rate | p50 Latency |
+|----------|--------|-------|------|-------------|
+| Happy path | 25 | 25 | 100% | 11.5s |
+| Edge case | 15 | 15 | 100% | 10.6s |
+| Adversarial | 10 | 10 | 100% | 8.6s |
+| Multi-step | 7 | 7 | 100% | 19.5s |
+
+**Performance Targets:**
+| Target | Actual | Status |
+|--------|--------|--------|
+| Eval pass rate >80% | 100% | PASS |
+| Tool success rate >95% | 100% | PASS |
+| Latency p50 <15s | 11.9s | PASS |
+| Latency p95 <30s | 22.6s | PASS |
+
+**Confidence distribution** (avg: 0.84): High (>=0.7): 48 | Moderate (0.4-0.7): 7 | Low (<0.4): 2
+
+**Open Source Eval Dataset:** The full 57-case evaluation dataset is published at [github.com/rohanthomas1202/healthcare-agent-eval](https://github.com/rohanthomas1202/healthcare-agent-eval) under MIT license.
+
 ## 6. Observability
 
-**LangSmith** integration provides:
+### LangSmith Integration
 - Full trace of every agent invocation (LLM calls, tool calls, token usage)
 - Latency breakdown per step
 - Cost tracking per query
 - Dataset management for eval runs
+- Configured via environment variables (`LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`)
 
-Configured via environment variables (`LANGCHAIN_TRACING_V2=true`, `LANGCHAIN_API_KEY`).
+### Custom Metrics (Phase 8)
+In-memory metrics store (`app/observability.py`) tracking:
+- **Per-request:** latency (ms), token usage (input/output), tool calls, errors
+- **User feedback:** thumbs up/down ratings with optional comments
+- **API endpoints:**
+  - `GET /api/metrics` — aggregated metrics (avg latency, total tokens, tool usage breakdown, feedback counts)
+  - `POST /api/feedback` — record user feedback per conversation
+- **Frontend:** Streamlit UI displays latency and token count per response, with thumbs up/down buttons
 
 ## 7. Deployment Architecture
 

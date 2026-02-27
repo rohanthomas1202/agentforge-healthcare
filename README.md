@@ -4,6 +4,27 @@ An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/)
 
 **Live Demo:** [agentforge-healthcare-production.up.railway.app](https://agentforge-healthcare-production.up.railway.app/)
 
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Agent architecture, tools, verification pipeline, deployment |
+| [COST_ANALYSIS.md](COST_ANALYSIS.md) | AI cost breakdown, production projections, optimization strategies |
+| [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | 5-minute demo walkthrough script |
+| [Eval Dataset](https://github.com/rohanthomas1202/healthcare-agent-eval) | Open source eval dataset (57 cases, MIT license) |
+| [OpenEMR Integration](https://github.com/rohanthomas1202/openemr/tree/master/agentforge) | Agent integrated into OpenEMR fork |
+
+## Evaluation Results
+
+**57/57 test cases passing (100%)** across 4 categories:
+
+| Category | Passed | Rate | p50 Latency |
+|----------|--------|------|-------------|
+| Happy path | 25/25 | 100% | 11.5s |
+| Edge case | 15/15 | 100% | 10.6s |
+| Adversarial | 10/10 | 100% | 8.6s |
+| Multi-step | 7/7 | 100% | 19.5s |
+
 ## Architecture
 
 ```
@@ -67,8 +88,9 @@ All three run via `run_verification_pipeline()` on every response before it reac
 - **Backend:** Python 3.11, FastAPI, uvicorn
 - **Frontend:** Streamlit
 - **EHR System:** OpenEMR (FHIR R4 API with OAuth2)
-- **Observability:** LangSmith
+- **Observability:** LangSmith + custom metrics (token tracking, latency, feedback)
 - **Deployment:** Railway (Docker, nginx, supervisord)
+- **Evaluation:** 57 test cases, pytest-parametrized, 100% pass rate
 
 ## Project Structure
 
