@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     max_tool_retries: int = 2
     response_timeout: int = 30
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 settings = Settings()

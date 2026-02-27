@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from api_client import check_health, send_message
+from api_client import check_health, send_feedback, send_message
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -78,6 +78,8 @@ def render_metadata(metadata: dict, show_verification: bool) -> None:
     disclaimers = metadata.get("disclaimers", [])
     tool_calls = metadata.get("tool_calls", [])
     verification = metadata.get("verification", {})
+    token_usage = metadata.get("token_usage", {})
+    latency_ms = metadata.get("latency_ms")
 
     # Confidence badge
     if confidence is not None:
@@ -95,6 +97,17 @@ def render_metadata(metadata: dict, show_verification: bool) -> None:
     if tool_calls:
         tools_used = ", ".join(tc["tool"] for tc in tool_calls)
         st.caption(f"🔧 Tools used: {tools_used}")
+
+    # Latency and token usage
+    perf_parts = []
+    if latency_ms is not None:
+        perf_parts.append(f"⏱ {latency_ms/1000:.1f}s")
+    if token_usage:
+        total_tok = token_usage.get("input", 0) + token_usage.get("output", 0)
+        if total_tok > 0:
+            perf_parts.append(f"🪙 {total_tok:,} tokens")
+    if perf_parts:
+        st.caption(" · ".join(perf_parts))
 
     # Disclaimers
     for disclaimer in disclaimers:
@@ -151,6 +164,29 @@ def render_metadata(metadata: dict, show_verification: bool) -> None:
                 )
 
 
+# ── Helper: feedback buttons ─────────────────────────────────────────────────
+
+def render_feedback_buttons(msg_idx: int) -> None:
+    """Render thumbs-up / thumbs-down buttons for a message."""
+    existing = st.session_state.messages[msg_idx].get("feedback")
+    if existing:
+        icon = "👍" if existing == "up" else "👎"
+        st.caption(f"Feedback: {icon}")
+        return
+
+    col1, col2, _ = st.columns([1, 1, 10])
+    with col1:
+        if st.button("👍", key=f"up_{msg_idx}"):
+            send_feedback(st.session_state.conversation_id, "up")
+            st.session_state.messages[msg_idx]["feedback"] = "up"
+            st.rerun()
+    with col2:
+        if st.button("👎", key=f"down_{msg_idx}"):
+            send_feedback(st.session_state.conversation_id, "down")
+            st.session_state.messages[msg_idx]["feedback"] = "down"
+            st.rerun()
+
+
 # ── Helper: send and display ─────────────────────────────────────────────────
 
 def send_and_display(user_prompt: str) -> None:
@@ -174,15 +210,22 @@ def send_and_display(user_prompt: str) -> None:
                     "disclaimers": result.get("disclaimers", []),
                     "tool_calls": result.get("tool_calls", []),
                     "verification": result.get("verification", {}),
+                    "token_usage": result.get("token_usage", {}),
+                    "latency_ms": result.get("latency_ms"),
                 }
 
                 render_metadata(metadata, show_details)
 
+                msg_idx = len(st.session_state.messages)
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": response,
                     "metadata": metadata,
+                    "feedback": None,
                 })
+
+                # Thumbs up / down
+                render_feedback_buttons(msg_idx)
 
             except Exception as e:
                 st.error(f"Error communicating with backend: {e}")
@@ -193,13 +236,14 @@ def send_and_display(user_prompt: str) -> None:
 st.title("Healthcare Assistant")
 
 # Display conversation history
-for msg in st.session_state.messages:
+for idx, msg in enumerate(st.session_state.messages):
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
         # Show metadata for assistant messages
         if msg["role"] == "assistant" and msg.get("metadata"):
             render_metadata(msg["metadata"], show_details)
+            render_feedback_buttons(idx)
 
 # ── Handle pending example from sidebar ──────────────────────────────────────
 

@@ -8,6 +8,7 @@ This module defines the agent's reasoning loop:
 5. Verification layer checks the response
 """
 
+import time
 import uuid
 from typing import Any, Optional
 
@@ -18,6 +19,7 @@ from langgraph.prebuilt import ToolNode
 
 from app.agent.state import AgentState
 from app.config import settings
+from app.observability import record_request
 from app.tools.registry import get_all_tools
 
 # System prompt for the healthcare agent
@@ -154,7 +156,7 @@ async def run_agent(
     # Build messages: system prompt + history + new message
     messages = [SystemMessage(content=SYSTEM_PROMPT)] + history + [HumanMessage(content=message)]
 
-    # Run the graph
+    # Run the graph with latency tracking
     initial_state = {
         "messages": messages,
         "tool_calls_log": [],
@@ -162,11 +164,27 @@ async def run_agent(
         "disclaimers": [],
     }
 
+    t_start = time.time()
     result = await _agent_graph.ainvoke(initial_state)
+    latency_ms = (time.time() - t_start) * 1000
 
     # Extract the final response
     ai_messages = result["messages"]
     final_message = ai_messages[-1]
+
+    # Extract token usage from LLM response metadata
+    token_usage = {"input": 0, "output": 0}
+    for msg in ai_messages:
+        meta = getattr(msg, "response_metadata", {}) or {}
+        usage = meta.get("usage", {})
+        if usage:
+            token_usage["input"] += usage.get("input_tokens", 0)
+            token_usage["output"] += usage.get("output_tokens", 0)
+        # LangChain unified usage_metadata
+        umeta = getattr(msg, "usage_metadata", None)
+        if umeta:
+            token_usage["input"] += umeta.get("input_tokens", 0)
+            token_usage["output"] += umeta.get("output_tokens", 0)
 
     # Log tool calls from the conversation
     tool_calls = []
@@ -205,6 +223,14 @@ async def run_agent(
         if d not in disclaimers:
             disclaimers.append(d)
 
+    # Record observability metrics
+    record_request(
+        conversation_id=conversation_id,
+        latency_ms=latency_ms,
+        token_usage=token_usage,
+        tool_calls=tool_calls,
+    )
+
     return {
         "response": final_message.content,
         "conversation_id": conversation_id,
@@ -212,4 +238,6 @@ async def run_agent(
         "confidence": verification_result["confidence"],
         "disclaimers": disclaimers,
         "verification": verification_result.get("verification", {}),
+        "token_usage": token_usage,
+        "latency_ms": round(latency_ms, 1),
     }

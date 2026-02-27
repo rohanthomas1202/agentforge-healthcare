@@ -39,6 +39,23 @@ def send_message(message: str, conversation_id: str | None = None) -> dict:
     return resp.json()
 
 
+def send_feedback(conversation_id: str, rating: str, comment: str | None = None) -> dict:
+    """Submit thumbs-up / thumbs-down feedback for a conversation."""
+    payload = {"conversation_id": conversation_id, "rating": rating}
+    if comment:
+        payload["comment"] = comment
+    try:
+        resp = requests.post(
+            f"{API_BASE_URL}/api/feedback",
+            json=payload,
+            timeout=HEALTH_TIMEOUT,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
+
 def check_health() -> dict:
     """Check if the backend API is healthy.
 
