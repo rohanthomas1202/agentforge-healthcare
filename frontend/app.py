@@ -95,11 +95,33 @@ with st.sidebar:
         ("📅 Appointments", "What appointments are available with Dr. Wilson on 2026-02-25?"),
         ("🛡️ FDA Safety", "Look up FDA safety information for Warfarin"),
         ("❤️ Record Vitals", "Record blood pressure 120/80 and heart rate 72 for John Smith"),
+        ("🔍 Care Gaps", "What preventive screenings is John Smith due for?"),
     ]
 
     for label, prompt in examples:
         if st.button(label, use_container_width=True):
             st.session_state.pending_example = prompt
+
+    st.divider()
+
+    # ── Available Tools Reference ──
+    with st.expander("🧰 Available Tools (12)", expanded=False):
+        tools_info = [
+            ("📋", "patient_summary", "Full patient record lookup"),
+            ("💊", "drug_interaction_check", "Check drug-drug interactions"),
+            ("🩺", "symptom_lookup", "Symptom → possible conditions"),
+            ("👨‍⚕️", "provider_search", "Find providers by specialty"),
+            ("📅", "appointment_availability", "Check appointment slots"),
+            ("🛡️", "fda_drug_safety", "FDA adverse event reports"),
+            ("⚠️", "drug_recall_check", "FDA recall alerts"),
+            ("🔬", "clinical_trials_search", "ClinicalTrials.gov search"),
+            ("💉", "allergy_check", "Drug-allergy cross-check"),
+            ("❤️", "record_vitals", "Write vitals to EHR"),
+            ("🔍", "care_gap_analysis", "USPSTF preventive care gaps"),
+            ("✅", "update_care_gap", "Update screening status"),
+        ]
+        for icon, name, desc in tools_info:
+            st.markdown(f"{icon} **{name}**  \n{desc}", unsafe_allow_html=True)
 
     st.divider()
     st.caption(
