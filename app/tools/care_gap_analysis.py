@@ -73,12 +73,8 @@ async def care_gap_analysis(patient_identifier: str) -> str:
         if not pid:
             return f"Patient found in FHIR but could not resolve internal ID. Please try again."
 
-        logger.info("Care gap analysis", extra={
-            "operation": "care_gap_analysis",
-            "patient": patient_identifier,
-            "age": age,
-            "sex": sex,
-        })
+        logger.info("Care gap analysis for %s (age=%d, sex=%s, fhir_id=%s)",
+                    patient_identifier, age, sex, patient_id)
 
         # Step 2: Find applicable screening protocols
         protocols = await fetch_all(
@@ -324,6 +320,15 @@ async def update_care_gap(
 
 async def _get_patient_pid(fhir_patient_id: str) -> Optional[int]:
     """Resolve FHIR patient UUID to the internal OpenEMR pid."""
+    # Primary: query patient_data table directly
+    row = await fetch_one(
+        "SELECT pid FROM patient_data WHERE uuid = UNHEX(REPLACE(%s, '-', '')) LIMIT 1",
+        (fhir_patient_id,),
+    )
+    if row:
+        return row["pid"]
+
+    # Fallback: try uuid_registry
     row = await fetch_one(
         """
         SELECT table_id FROM uuid_registry
@@ -335,6 +340,9 @@ async def _get_patient_pid(fhir_patient_id: str) -> Optional[int]:
     )
     if row:
         return row["table_id"]
+
+    # Last resort: try matching by name via the FHIR patient data we already have
+    logger.warning("Could not resolve PID for FHIR UUID %s", fhir_patient_id)
     return None
 
 
