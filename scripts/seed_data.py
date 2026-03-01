@@ -29,12 +29,8 @@ PASSWORD = os.getenv("OPENEMR_PASSWORD", "pass")
 WRITE_SCOPES = (
     "openid api:fhir "
     "user/Patient.read user/Patient.write "
-    "user/Condition.read user/Condition.write "
-    "user/MedicationRequest.read user/MedicationRequest.write "
-    "user/AllergyIntolerance.read user/AllergyIntolerance.write "
-    "user/Immunization.read user/Immunization.write "
-    "user/Observation.read user/Observation.write "
-    "user/Encounter.read user/Encounter.write "
+    "user/Condition.read user/MedicationRequest.read "
+    "user/AllergyIntolerance.read "
     "user/Practitioner.read user/Practitioner.write "
     "user/Organization.read"
 )
