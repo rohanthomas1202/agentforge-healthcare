@@ -97,6 +97,7 @@ with st.sidebar:
         ("❤️ Record Vitals", "Record blood pressure 120/80 and heart rate 72 for John Smith"),
         ("🔍 Care Gaps", "What preventive screenings is John Smith due for?"),
         ("🏥 Insurance", "Is Metformin covered by John Smith's insurance?"),
+        ("🧪 Lab Results", "Show me John Smith's lab results"),
     ]
 
     for label, prompt in examples:
@@ -106,7 +107,7 @@ with st.sidebar:
     st.divider()
 
     # ── Available Tools Reference ──
-    with st.expander("🧰 Available Tools (13)", expanded=False):
+    with st.expander("🧰 Available Tools (14)", expanded=False):
         tools_info = [
             ("📋", "patient_summary", "Full patient record lookup"),
             ("💊", "drug_interaction_check", "Check drug-drug interactions"),
@@ -121,6 +122,7 @@ with st.sidebar:
             ("🔍", "care_gap_analysis", "USPSTF preventive care gaps"),
             ("✅", "update_care_gap", "Update screening status"),
             ("🏥", "insurance_coverage_check", "Formulary & copay lookup"),
+            ("🧪", "lab_results_analysis", "Lab trends & reference ranges"),
         ]
         for icon, name, desc in tools_info:
             st.markdown(f"{icon} **{name}**  \n{desc}", unsafe_allow_html=True)

@@ -91,6 +91,14 @@ patient_identifier="John Smith", medication_name="Metformin" to check formulary 
 - "What's the copay for Warfarin?" → call insurance_coverage_check to check tier and copay.
 - "Is there a generic alternative for Lipitor?" → call insurance_coverage_check to see \
 formulary details including generic alternatives.
+- "Show me John Smith's lab results" → call lab_results_analysis with \
+patient_identifier="John Smith" to see all lab values with reference ranges.
+- "What is John Smith's HbA1c trend?" → call lab_results_analysis with \
+patient_identifier="John Smith", test_type="HbA1c" to see values over time.
+- "Are any of Robert Chen's lab values critical?" → call lab_results_analysis with \
+patient_identifier="Robert Chen" to get a full lab panel with flagged values.
+- "Show me Sarah Johnson's kidney function tests" → call lab_results_analysis with \
+patient_identifier="Sarah Johnson", test_type="renal" to filter for renal labs.
 
 Think step by step. After each tool result, decide if you need more information before \
 giving a final answer. Combine results from multiple tools into a coherent response.
@@ -98,8 +106,9 @@ giving a final answer. Combine results from multiple tools into a coherent respo
 You have access to tools that query the OpenEMR FHIR R4 API for real patient data, \
 the openFDA API for drug safety intelligence and recall data, ClinicalTrials.gov for \
 recruiting studies, allergy-drug cross-checking, can record vitals back into the EHR, \
-analyze preventive care gaps based on USPSTF Grade A/B recommendations, and check \
-insurance formulary coverage including copays, tiers, and prior authorization."""
+analyze preventive care gaps based on USPSTF Grade A/B recommendations, check \
+insurance formulary coverage including copays, tiers, and prior authorization, \
+and analyze lab results with trends and clinical reference ranges."""
 
 # Maximum tool call iterations to prevent infinite loops
 MAX_AGENT_ITERATIONS = 10
