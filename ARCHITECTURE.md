@@ -167,17 +167,18 @@ In-memory metrics store (`app/observability.py`) tracking:
 ## 7. Deployment Architecture
 
 ```
-Railway (single container, port 8080)
-├── nginx          -- reverse proxy, routes /api/* to FastAPI, /* to Streamlit
-├── uvicorn        -- FastAPI backend on :8000
-└── streamlit      -- Chat UI on :8501
+AWS Lightsail (Docker Compose, 3 containers)
+├── mariadb        -- OpenEMR database
+├── openemr        -- FHIR R4 API server (internal only, port 443)
+└── agentforge     -- Single container (port 80)
+    ├── nginx      -- reverse proxy, routes /api/* to FastAPI, /* to Streamlit
+    ├── uvicorn    -- FastAPI backend on :8000
+    └── streamlit  -- Chat UI on :8501
 
-Backend → OpenEMR FHIR API (local Docker + ngrok tunnel, or mock data mode)
+AgentForge → OpenEMR via Docker internal DNS (https://openemr)
 ```
 
-**Two operational modes:**
-1. **Live mode:** Connects to real OpenEMR via ngrok tunnel (requires local Docker + ngrok running)
-2. **Mock mode** (`USE_MOCK_DATA=true`): Uses 10 synthetic patients with full FHIR-format records, no external dependencies
+OpenEMR runs alongside the agent on the same Lightsail instance, connected via Docker internal networking. No ngrok or external tunneling required. A **mock mode** (`USE_MOCK_DATA=true`) is also available for standalone deployment without OpenEMR.
 
 ## 8. Key Design Decisions
 
@@ -187,5 +188,5 @@ Backend → OpenEMR FHIR API (local Docker + ngrok tunnel, or mock data mode)
 | Local drug/symptom databases over external APIs | Faster, more reliable, no additional API costs or rate limits |
 | Verification as post-processing (not in-loop) | Keeps the agent loop simple; verification catches issues before user sees them |
 | Mock data layer as drop-in replacement | Same interface as real FHIR client; enables deployment without OpenEMR dependency |
-| Single-container deployment | Simpler ops; nginx + supervisord handles process management within one Railway service |
+| Docker Compose on Lightsail | Co-locates OpenEMR + agent on one instance; Docker internal DNS for secure FHIR communication |
 | Temperature 0 for LLM | Medical context demands consistency and reproducibility over creativity |

@@ -2,7 +2,7 @@
 
 An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/), the open-source Electronic Health Records system. Uses a LangGraph agent with 5 specialized tools to query real patient data via FHIR R4 APIs, with a 3-layer verification pipeline to ensure safe, grounded responses.
 
-**Live Demo:** [agentforge-healthcare-production.up.railway.app](https://agentforge-healthcare-production.up.railway.app/)
+**Live Demo:** [http://54.236.183.203](http://54.236.183.203/)
 
 ## Documentation
 
@@ -89,7 +89,7 @@ All three run via `run_verification_pipeline()` on every response before it reac
 - **Frontend:** Streamlit
 - **EHR System:** OpenEMR (FHIR R4 API with OAuth2)
 - **Observability:** LangSmith + custom metrics (token tracking, latency, feedback)
-- **Deployment:** Railway (Docker, nginx, supervisord)
+- **Deployment:** AWS Lightsail (Docker Compose: MariaDB + OpenEMR + AgentForge)
 - **Evaluation:** 57 test cases, pytest-parametrized, 100% pass rate
 
 ## Project Structure
@@ -227,9 +227,12 @@ python evals/test_eval.py
 
 ## Deployment
 
-The app deploys as a single Docker container on Railway with nginx reverse-proxying to FastAPI (:8000) and Streamlit (:8501).
+The app deploys on AWS Lightsail as a 3-container Docker Compose stack:
+- **MariaDB** — OpenEMR database
+- **OpenEMR** — FHIR R4 API server (internal only, port 443)
+- **AgentForge** — FastAPI + Streamlit + nginx (exposed on port 80)
 
-For real OpenEMR data in production, expose your local OpenEMR via ngrok and set the `OPENEMR_*_URL` env vars to the ngrok URL. For standalone demo mode, set `USE_MOCK_DATA=true`.
+The AgentForge container uses nginx to reverse-proxy to FastAPI (:8000) and Streamlit (:8501). OpenEMR communicates with the agent via Docker internal DNS (`https://openemr`).
 
 ## License
 

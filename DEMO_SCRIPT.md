@@ -6,7 +6,7 @@ bv # Demo Video Script (3-5 minutes)
 
 > "This is AgentForge Healthcare -- an AI agent built on OpenEMR, the open-source Electronic Health Records system. It takes natural language queries, pulls real patient data from a FHIR R4 API, and returns verified, grounded responses with safety checks built in."
 
-**Show:** The deployed Streamlit UI at `agentforge-healthcare-production.up.railway.app`
+**Show:** The deployed Streamlit UI at `http://54.236.183.203`
 
 ---
 
@@ -121,14 +121,14 @@ bv # Demo Video Script (3-5 minutes)
 
 ## Wrap Up (15 seconds)
 
-> "To summarize: 5 tools querying real EHR data via FHIR, 3 verification systems for safety, 57 eval test cases, LangSmith observability, and deployed publicly on Railway. The whole system is designed so that the AI handles reasoning while deterministic code handles execution and verification."
+> "To summarize: 5 tools querying real EHR data via FHIR, 3 verification systems for safety, 57 eval test cases, LangSmith observability, and deployed publicly on AWS Lightsail. The whole system is designed so that the AI handles reasoning while deterministic code handles execution and verification."
 
 ---
 
 ## Tips for Recording
 
-- **Use the deployed URL** (Railway) for the demo so it shows the public deployment
-- **Have ngrok + OpenEMR running** if demoing real data, or use mock mode
+- **Use the deployed URL** (`http://54.236.183.203`) for the demo so it shows the public deployment
+- OpenEMR runs alongside the agent on Lightsail — no ngrok needed
 - **Keep the browser zoomed in** so text is readable
 - **Pause briefly** after each query to let the response load
 - **Click to expand** verification metadata so it's visible on screen

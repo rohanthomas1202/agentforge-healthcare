@@ -11,7 +11,7 @@ What it does:
 - Provider search and appointment availability
 - 3-layer verification: drug safety checks, confidence scoring, and hallucination detection
 
-The stack: LangGraph agent + Claude Sonnet 4 + FastAPI + Streamlit, deployed on Railway. 57 eval cases across happy path, edge cases, adversarial, and multi-step reasoning — 100% pass rate.
+The stack: LangGraph agent + Claude Sonnet 4 + FastAPI + Streamlit, deployed on AWS Lightsail with a full OpenEMR instance. 57 eval cases across happy path, edge cases, adversarial, and multi-step reasoning — 100% pass rate.
 
 Open sourced the eval dataset for anyone building healthcare AI agents: github.com/rohanthomas1202/healthcare-agent-eval
 
@@ -29,6 +29,6 @@ Built an AI agent that talks to OpenEMR's FHIR API to answer clinical questions 
 
 Open sourced the eval dataset: github.com/rohanthomas1202/healthcare-agent-eval
 
-Stack: LangGraph + Claude Sonnet 4 + FastAPI + Streamlit on Railway
+Stack: LangGraph + Claude Sonnet 4 + FastAPI + Streamlit on AWS Lightsail
 
 #AgentForge #HealthcareAI #OpenSource
