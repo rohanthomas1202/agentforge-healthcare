@@ -73,6 +73,11 @@ services:
       FHIR_VERIFY_SSL: "false"
       ALLOWED_ORIGINS: "*"
       ENVIRONMENT: production
+      MARIADB_HOST: mariadb
+      MARIADB_PORT: "3306"
+      MARIADB_USER: openemr
+      MARIADB_PASSWORD: openemr
+      MARIADB_DATABASE: openemr
     depends_on:
       - openemr
     networks:

@@ -8,6 +8,7 @@ from langchain_core.tools import BaseTool
 
 from app.tools.allergy_checker import allergy_check
 from app.tools.appointment_availability import appointment_availability
+from app.tools.care_gap_analysis import care_gap_analysis, update_care_gap
 from app.tools.clinical_trials import clinical_trials_search
 from app.tools.drug_interaction import drug_interaction_check
 from app.tools.drug_recall import drug_recall_check
@@ -31,5 +32,7 @@ def get_all_tools() -> list[BaseTool]:
         clinical_trials_search,
         allergy_check,
         drug_recall_check,
+        care_gap_analysis,
+        update_care_gap,
     ]
     return tools

@@ -79,13 +79,21 @@ patient_identifier="Robert Chen" to check all his meds for active FDA recalls.
 - "Run a complete safety review for Robert Chen" → call patient_summary for his record, \
 then drug_interaction_check on his meds, then allergy_check for allergy conflicts, \
 then drug_recall_check for active recalls, then fda_drug_safety for any flagged drugs.
+- "What preventive screenings is John Smith due for?" → call care_gap_analysis with \
+patient_identifier="John Smith" to see all applicable USPSTF screenings and their status.
+- "Mark colorectal cancer screening as completed for John Smith" → call update_care_gap \
+with patient_identifier="John Smith", screening_name="Colorectal Cancer Screening", \
+action="completed".
+- "What screenings is Sarah Johnson overdue for?" → call care_gap_analysis to see her \
+personalized screening recommendations based on age and sex.
 
 Think step by step. After each tool result, decide if you need more information before \
 giving a final answer. Combine results from multiple tools into a coherent response.
 
 You have access to tools that query the OpenEMR FHIR R4 API for real patient data, \
 the openFDA API for drug safety intelligence and recall data, ClinicalTrials.gov for \
-recruiting studies, allergy-drug cross-checking, and can record vitals back into the EHR."""
+recruiting studies, allergy-drug cross-checking, can record vitals back into the EHR, \
+and analyze preventive care gaps based on USPSTF Grade A/B recommendations."""
 
 # Maximum tool call iterations to prevent infinite loops
 MAX_AGENT_ITERATIONS = 10

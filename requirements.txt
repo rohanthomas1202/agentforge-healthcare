@@ -28,6 +28,9 @@ python-multipart==0.0.20
 # Reliability
 tenacity>=8.2.0
 
+# MariaDB async client (for care gaps, formulary, lab reference data)
+aiomysql>=0.2.0
+
 # Security
 slowapi==0.1.9
 
