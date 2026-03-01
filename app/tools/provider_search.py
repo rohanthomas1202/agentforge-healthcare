@@ -150,7 +150,12 @@ async def _search_by_name(name: str) -> list[dict]:
 
 
 async def _search_by_specialty(specialty: str) -> list[dict]:
-    """Search for practitioners by specialty via PractitionerRole endpoint."""
+    """Search for practitioners by specialty via PractitionerRole endpoint.
+
+    Falls back to querying the OpenEMR users table directly if FHIR
+    PractitionerRole returns no results (OpenEMR doesn't always populate
+    PractitionerRole specialty codes properly).
+    """
     # Map common names to NUCC taxonomy codes (OpenEMR requires codes, not text)
     code = SPECIALTY_CODES.get(specialty.lower().strip())
     search_term = code if code else specialty
@@ -182,7 +187,59 @@ async def _search_by_specialty(specialty: str) -> list[dict]:
                         "organization": role_data.get("organization"),
                     })
 
+    # Fallback: query OpenEMR users table directly if FHIR returned nothing
+    if not providers:
+        providers = await _search_by_specialty_db(specialty)
+
     return providers
+
+
+async def _search_by_specialty_db(specialty: str) -> list[dict]:
+    """Fallback: search for providers by specialty in the OpenEMR users table."""
+    import os
+    if os.getenv("USE_MOCK_DATA", "").lower() in ("true", "1", "yes"):
+        return []
+
+    try:
+        from app.openemr_db import get_db_pool
+        pool = await get_db_pool()
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                # Search users table where specialty matches (case-insensitive)
+                await cur.execute(
+                    "SELECT u.id, u.uuid, u.fname, u.lname, u.specialty, u.npi, "
+                    "u.phonew1, u.email, u.street, u.city, u.state, u.zip, u.active "
+                    "FROM users u "
+                    "WHERE u.authorized = 1 AND u.active = 1 "
+                    "AND LOWER(u.specialty) LIKE %s",
+                    (f"%{specialty.lower()}%",)
+                )
+                rows = await cur.fetchall()
+
+                providers = []
+                for row in rows:
+                    uuid_bytes = row[1]
+                    if uuid_bytes and isinstance(uuid_bytes, (bytes, bytearray)):
+                        uuid_hex = uuid_bytes.hex()
+                        uuid_str = f"{uuid_hex[:8]}-{uuid_hex[8:12]}-{uuid_hex[12:16]}-{uuid_hex[16:20]}-{uuid_hex[20:]}"
+                    else:
+                        uuid_str = str(row[0])
+
+                    address_parts = [p for p in [row[8], row[9], row[10], row[11]] if p]
+                    providers.append({
+                        "id": uuid_str,
+                        "name": f"{row[2] or ''} {row[3] or ''}".strip(),
+                        "specialty": row[4] or specialty,
+                        "npi": row[5] or "",
+                        "phone": row[6] or "",
+                        "email": row[7] or "",
+                        "address": ", ".join(address_parts) if address_parts else None,
+                        "active": bool(row[12]),
+                    })
+                return providers
+    except Exception as e:
+        logger.warning(f"DB specialty search fallback failed: {e}")
+        return []
 
 
 async def _enrich_with_roles(providers: list[dict]) -> None:
