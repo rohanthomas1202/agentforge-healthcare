@@ -46,9 +46,12 @@ services:
       MANUAL_SETUP: "no"
     volumes:
       - openemr_data:/var/www/localhost/htdocs/openemr/sites
+    ports:
+      # localhost-only: for seed scripts and debugging from the host.
+      # Not reachable from the internet (Lightsail firewall blocks 9300).
+      - "127.0.0.1:9300:443"
     networks:
       - internal
-    # No ports exposed — only accessible via Docker internal network
 
   agentforge:
     build:
