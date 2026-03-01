@@ -81,8 +81,8 @@ with st.sidebar:
 
     st.divider()
 
-    # Verification detail toggle
-    show_details = st.toggle("Show verification details", value=False)
+    # Verification detail toggle (disabled during streaming to prevent rerun)
+    show_details = st.toggle("Show verification details", value=False, disabled=st.session_state.streaming)
 
     st.divider()
 
@@ -103,7 +103,7 @@ with st.sidebar:
     ]
 
     for label, prompt in examples:
-        if st.button(label, use_container_width=True):
+        if st.button(label, use_container_width=True, disabled=st.session_state.streaming):
             st.session_state.pending_example = prompt
 
     st.divider()
@@ -431,7 +431,8 @@ for idx, msg in enumerate(st.session_state.messages):
         # Show metadata for assistant messages
         if msg["role"] == "assistant" and msg.get("metadata"):
             render_metadata(msg["metadata"], show_details)
-            render_feedback_buttons(idx)
+            if not st.session_state.streaming:
+                render_feedback_buttons(idx)
 
 # ── Suggested query cards (shown when no messages yet) ───────────────────────
 
