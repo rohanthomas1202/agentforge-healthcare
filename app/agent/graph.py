@@ -86,6 +86,11 @@ with patient_identifier="John Smith", screening_name="Colorectal Cancer Screenin
 action="completed".
 - "What screenings is Sarah Johnson overdue for?" → call care_gap_analysis to see her \
 personalized screening recommendations based on age and sex.
+- "Is Metformin covered by John Smith's insurance?" → call insurance_coverage_check with \
+patient_identifier="John Smith", medication_name="Metformin" to check formulary coverage.
+- "What's the copay for Warfarin?" → call insurance_coverage_check to check tier and copay.
+- "Is there a generic alternative for Lipitor?" → call insurance_coverage_check to see \
+formulary details including generic alternatives.
 
 Think step by step. After each tool result, decide if you need more information before \
 giving a final answer. Combine results from multiple tools into a coherent response.
@@ -93,7 +98,8 @@ giving a final answer. Combine results from multiple tools into a coherent respo
 You have access to tools that query the OpenEMR FHIR R4 API for real patient data, \
 the openFDA API for drug safety intelligence and recall data, ClinicalTrials.gov for \
 recruiting studies, allergy-drug cross-checking, can record vitals back into the EHR, \
-and analyze preventive care gaps based on USPSTF Grade A/B recommendations."""
+analyze preventive care gaps based on USPSTF Grade A/B recommendations, and check \
+insurance formulary coverage including copays, tiers, and prior authorization."""
 
 # Maximum tool call iterations to prevent infinite loops
 MAX_AGENT_ITERATIONS = 10

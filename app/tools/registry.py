@@ -10,6 +10,7 @@ from app.tools.allergy_checker import allergy_check
 from app.tools.appointment_availability import appointment_availability
 from app.tools.care_gap_analysis import care_gap_analysis, update_care_gap
 from app.tools.clinical_trials import clinical_trials_search
+from app.tools.insurance_coverage import insurance_coverage_check
 from app.tools.drug_interaction import drug_interaction_check
 from app.tools.drug_recall import drug_recall_check
 from app.tools.fda_drug_safety import fda_drug_safety
@@ -34,5 +35,6 @@ def get_all_tools() -> list[BaseTool]:
         drug_recall_check,
         care_gap_analysis,
         update_care_gap,
+        insurance_coverage_check,
     ]
     return tools
