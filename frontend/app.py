@@ -357,9 +357,45 @@ def send_and_display(user_prompt: str) -> None:
                 st.error(f"Error communicating with backend: {fallback_error}")
 
 
+# ── Custom CSS for suggestion cards ─────────────────────────────────────────
+
+st.markdown("""
+<style>
+    /* Style the suggestion card buttons */
+    div[data-testid="stVerticalBlock"] > div:has(> div > button[kind="secondary"][key^="card_"]) button,
+    button[key^="card_"] {
+        min-height: 90px !important;
+        white-space: pre-wrap !important;
+        text-align: left !important;
+        border: 1px solid rgba(250, 250, 250, 0.1) !important;
+    }
+    /* Disclaimer banner */
+    .disclaimer-banner {
+        background: linear-gradient(90deg, #1a3a4a, #1a2a3a);
+        border: 1px solid #2a5a6a;
+        border-radius: 8px;
+        padding: 10px 16px;
+        margin-bottom: 16px;
+        font-size: 0.85em;
+        color: #e0e0e0;
+    }
+    .disclaimer-banner strong { color: #ffa726; }
+</style>
+""", unsafe_allow_html=True)
+
 # ── Main chat area ───────────────────────────────────────────────────────────
 
 st.title("Healthcare Assistant")
+
+# Disclaimer banner
+st.markdown(
+    '<div class="disclaimer-banner">'
+    '<strong>Educational purposes only.</strong> '
+    'Not a substitute for professional medical advice. '
+    'If experiencing a medical emergency, call 911 immediately.'
+    '</div>',
+    unsafe_allow_html=True,
+)
 
 # Display conversation history
 for idx, msg in enumerate(st.session_state.messages):
@@ -370,6 +406,48 @@ for idx, msg in enumerate(st.session_state.messages):
         if msg["role"] == "assistant" and msg.get("metadata"):
             render_metadata(msg["metadata"], show_details)
             render_feedback_buttons(idx)
+
+# ── Suggested query cards (shown when no messages yet) ───────────────────────
+
+if not st.session_state.messages and "pending_example" not in st.session_state:
+    st.markdown("#### What can I help you with?")
+    st.caption("Click a card below or type your own question.")
+
+    suggested_queries = [
+        ("📋", "Clinical Decision Report",
+         "Comprehensive multi-tool analysis",
+         "Give me a full clinical decision report for John Smith including medications, interactions, FDA recalls, and care gaps"),
+        ("💊", "Drug Interactions",
+         "Check interaction between medications",
+         "Check for interactions between Warfarin, Aspirin, and Metoprolol"),
+        ("🩺", "Symptom Triage",
+         "I have a persistent headache with fever",
+         "What conditions could cause a persistent headache with fever?"),
+        ("👨\u200d⚕️", "Find a Provider",
+         "Find me a cardiologist",
+         "Find me a cardiologist and check their availability"),
+        ("🏥", "Insurance",
+         "Does Blue Cross cover my medication?",
+         "Is Metformin covered by John Smith's insurance?"),
+        ("🧪", "Lab Results",
+         "Scan patient lab values and trends",
+         "Show me John Smith's lab results and flag any abnormal values"),
+    ]
+
+    # 2 rows of 3 cards
+    for row_start in range(0, len(suggested_queries), 3):
+        cols = st.columns(3)
+        for col, (icon, title, desc, query) in zip(cols, suggested_queries[row_start:row_start + 3]):
+            with col:
+                if st.button(
+                    f"{icon} **{title}**\n\n{desc}",
+                    key=f"card_{title}",
+                    use_container_width=True,
+                ):
+                    st.session_state.pending_example = query
+
+    if "pending_example" in st.session_state:
+        st.rerun()
 
 # ── Handle pending example from sidebar ──────────────────────────────────────
 

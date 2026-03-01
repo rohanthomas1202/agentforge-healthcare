@@ -23,12 +23,8 @@ Built during Gauntlet Week 2 (AgentForge).
 
 ## X (Twitter)
 
-Built an AI agent that talks to OpenEMR's FHIR API to answer clinical questions — patient summaries, drug interactions, symptom analysis, appointment scheduling.
+Built an AI healthcare agent on OpenEMR — answers clinical questions using real FHIR patient data with 3 verification layers for safety. 57 evals, 100% pass rate.
 
-3 verification layers catch unsafe responses before they reach users. 57 eval cases, 100% pass rate.
+Eval dataset open sourced: github.com/rohanthomas1202/healthcare-agent-eval
 
-Open sourced the eval dataset: github.com/rohanthomas1202/healthcare-agent-eval
-
-Stack: LangGraph + Claude Sonnet 4 + FastAPI + Streamlit on AWS Lightsail
-
-#AgentForge #HealthcareAI #OpenSource
+#AgentForge #HealthcareAI
