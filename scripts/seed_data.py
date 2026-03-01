@@ -3,6 +3,11 @@
 Creates 3 test patients with conditions, medications, and allergies,
 plus 3 practitioners with specialties (via PractitionerRole DB inserts).
 
+Patients and Practitioners are created via FHIR POST.
+Clinical data (conditions, medications, allergies) are inserted directly
+into the MariaDB `lists` table because OpenEMR's FHIR API returns 404
+for POST to Condition/MedicationRequest/AllergyIntolerance.
+
 Run: cd agentforge-healthcare && ./venv/Scripts/python.exe scripts/seed_data.py
 """
 
@@ -38,6 +43,66 @@ WRITE_SCOPES = (
 # Docker container name for OpenEMR (used for DB inserts)
 # Set OPENEMR_CONTAINER env var to override auto-detection (e.g., for docker compose)
 OPENEMR_CONTAINER = os.getenv("OPENEMR_CONTAINER", None)
+
+
+# --- DB Helper Functions for Clinical Data ---
+
+def _get_pid_by_name(fname: str, lname: str) -> Optional[str]:
+    """Get the integer PID from patient_data table by name."""
+    result = _run_db_query(
+        f"SELECT pid FROM patient_data WHERE fname='{fname}' AND lname='{lname}' LIMIT 1;"
+    )
+    lines = [l for l in result.strip().split("\n") if l and l != "pid"]
+    return lines[0].strip() if lines else None
+
+
+def _insert_condition(pid: str, title: str, icd_code: str):
+    """Insert a condition into the lists table with UUID registration."""
+    safe_title = title.replace("'", "\\'")
+    sql = (
+        f"INSERT INTO lists (date, type, title, diagnosis, activity, pid, `user`, groupname, uuid) "
+        f"VALUES (NOW(), 'medical_problem', '{safe_title}', 'ICD10:{icd_code}', 1, {pid}, 'admin', 'Default', UNHEX(REPLACE(UUID(), '-', '')));"
+    )
+    _run_db_query(sql)
+    _run_db_query(
+        "INSERT INTO uuid_registry (uuid, table_name, table_id, created) "
+        "SELECT uuid, 'lists', id, NOW() FROM lists WHERE id = (SELECT MAX(id) FROM lists);"
+    )
+    print(f"    Condition: {title} (ICD10:{icd_code})")
+
+
+def _insert_medication(pid: str, title: str, dosage: str):
+    """Insert a medication into the lists table with UUID registration."""
+    safe_title = title.replace("'", "\\'")
+    safe_dosage = dosage.replace("'", "\\'")
+    sql = (
+        f"INSERT INTO lists (date, type, title, activity, pid, `user`, groupname, comments, uuid) "
+        f"VALUES (NOW(), 'medication', '{safe_title}', 1, {pid}, 'admin', 'Default', '{safe_dosage}', UNHEX(REPLACE(UUID(), '-', '')));"
+    )
+    _run_db_query(sql)
+    _run_db_query(
+        "INSERT INTO uuid_registry (uuid, table_name, table_id, created) "
+        "SELECT uuid, 'lists', id, NOW() FROM lists WHERE id = (SELECT MAX(id) FROM lists);"
+    )
+    print(f"    Medication: {title}")
+
+
+def _insert_allergy(pid: str, title: str, severity: str = "severe", reaction: str = ""):
+    """Insert an allergy into the lists table with UUID registration."""
+    safe_title = title.replace("'", "\\'")
+    safe_reaction = reaction.replace("'", "\\'")
+    severity_map = {"high": "severe", "low": "mild", "medium": "moderate"}
+    sev = severity_map.get(severity, severity)
+    sql = (
+        f"INSERT INTO lists (date, type, title, activity, pid, `user`, groupname, severity_al, reaction, uuid) "
+        f"VALUES (NOW(), 'allergy', '{safe_title}', 1, {pid}, 'admin', 'Default', '{sev}', '{safe_reaction}', UNHEX(REPLACE(UUID(), '-', '')));"
+    )
+    _run_db_query(sql)
+    _run_db_query(
+        "INSERT INTO uuid_registry (uuid, table_name, table_id, created) "
+        "SELECT uuid, 'lists', id, NOW() FROM lists WHERE id = (SELECT MAX(id) FROM lists);"
+    )
+    print(f"    Allergy: {title} (severity: {sev})")
 
 
 async def get_token(client: httpx.AsyncClient) -> str:
@@ -134,58 +199,31 @@ async def seed():
             print("Failed to find/create Patient 1. Aborting.")
             return
 
-        # Conditions: Type 2 Diabetes, Hypertension
-        await create_resource(client, token, "Condition", {
-            "resourceType": "Condition",
-            "subject": {"reference": f"Patient/{p1_id}"},
-            "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "E11.9", "display": "Type 2 diabetes mellitus without complications"}]},
-            "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-            "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-        })
-        await create_resource(client, token, "Condition", {
-            "resourceType": "Condition",
-            "subject": {"reference": f"Patient/{p1_id}"},
-            "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I10", "display": "Essential hypertension"}]},
-            "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-            "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-        })
+        # Get DB PID for direct inserts
+        p1_pid = _get_pid_by_name("John", "Smith")
+        if not p1_pid:
+            print("  WARNING: Could not find DB PID for John Smith")
+        else:
+            # Check if clinical data already exists
+            existing = _run_db_query(f"SELECT COUNT(*) as cnt FROM lists WHERE pid={p1_pid};")
+            has_data = "0" not in existing if existing else False
+            if has_data:
+                print("  Clinical data already exists, skipping inserts")
+            else:
+                # Conditions: Type 2 Diabetes, Hypertension
+                print("  Conditions:")
+                _insert_condition(p1_pid, "Type 2 diabetes mellitus without complications", "E11.9")
+                _insert_condition(p1_pid, "Essential hypertension", "I10")
 
-        # Medications: Metformin, Lisinopril, Atorvastatin
-        await create_resource(client, token, "MedicationRequest", {
-            "resourceType": "MedicationRequest",
-            "status": "active",
-            "intent": "order",
-            "subject": {"reference": f"Patient/{p1_id}"},
-            "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "860975", "display": "Metformin 500 MG Oral Tablet"}], "text": "Metformin 500mg"},
-            "dosageInstruction": [{"text": "Take 1 tablet twice daily with meals"}],
-        })
-        await create_resource(client, token, "MedicationRequest", {
-            "resourceType": "MedicationRequest",
-            "status": "active",
-            "intent": "order",
-            "subject": {"reference": f"Patient/{p1_id}"},
-            "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "314076", "display": "Lisinopril 10 MG Oral Tablet"}], "text": "Lisinopril 10mg"},
-            "dosageInstruction": [{"text": "Take 1 tablet daily in the morning"}],
-        })
-        await create_resource(client, token, "MedicationRequest", {
-            "resourceType": "MedicationRequest",
-            "status": "active",
-            "intent": "order",
-            "subject": {"reference": f"Patient/{p1_id}"},
-            "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "259255", "display": "Atorvastatin 20 MG Oral Tablet"}], "text": "Atorvastatin 20mg"},
-            "dosageInstruction": [{"text": "Take 1 tablet daily at bedtime"}],
-        })
+                # Medications: Metformin, Lisinopril, Atorvastatin
+                print("  Medications:")
+                _insert_medication(p1_pid, "Metformin 500 MG Oral Tablet", "Take 1 tablet twice daily with meals")
+                _insert_medication(p1_pid, "Lisinopril 10 MG Oral Tablet", "Take 1 tablet daily in the morning")
+                _insert_medication(p1_pid, "Atorvastatin 20 MG Oral Tablet", "Take 1 tablet daily at bedtime")
 
-        # Allergy: Penicillin
-        await create_resource(client, token, "AllergyIntolerance", {
-            "resourceType": "AllergyIntolerance",
-            "patient": {"reference": f"Patient/{p1_id}"},
-            "code": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "7980", "display": "Penicillin"}], "text": "Penicillin"},
-            "type": "allergy",
-            "category": ["medication"],
-            "criticality": "high",
-            "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
-        })
+                # Allergy: Penicillin
+                print("  Allergies:")
+                _insert_allergy(p1_pid, "Penicillin", "high", "Anaphylaxis")
         print()
 
         # ========== PATIENT 2: Sarah Johnson ==========
@@ -204,59 +242,29 @@ async def seed():
         if not p2_id:
             print("Failed to find/create Patient 2. Continuing...")
         else:
-            # Conditions: Asthma, Anxiety
-            await create_resource(client, token, "Condition", {
-                "resourceType": "Condition",
-                "subject": {"reference": f"Patient/{p2_id}"},
-                "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "J45.909", "display": "Unspecified asthma, uncomplicated"}]},
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-                "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-            })
-            await create_resource(client, token, "Condition", {
-                "resourceType": "Condition",
-                "subject": {"reference": f"Patient/{p2_id}"},
-                "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "F41.1", "display": "Generalized anxiety disorder"}]},
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-                "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-            })
+            p2_pid = _get_pid_by_name("Sarah", "Johnson")
+            if not p2_pid:
+                print("  WARNING: Could not find DB PID for Sarah Johnson")
+            else:
+                existing = _run_db_query(f"SELECT COUNT(*) as cnt FROM lists WHERE pid={p2_pid};")
+                has_data = "0" not in existing if existing else False
+                if has_data:
+                    print("  Clinical data already exists, skipping inserts")
+                else:
+                    # Conditions: Asthma, Anxiety
+                    print("  Conditions:")
+                    _insert_condition(p2_pid, "Unspecified asthma, uncomplicated", "J45.909")
+                    _insert_condition(p2_pid, "Generalized anxiety disorder", "F41.1")
 
-            # Medications: Albuterol, Sertraline
-            await create_resource(client, token, "MedicationRequest", {
-                "resourceType": "MedicationRequest",
-                "status": "active",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{p2_id}"},
-                "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "245314", "display": "Albuterol 0.09 MG/ACTUAT Metered Dose Inhaler"}], "text": "Albuterol Inhaler"},
-                "dosageInstruction": [{"text": "2 puffs every 4-6 hours as needed for wheezing"}],
-            })
-            await create_resource(client, token, "MedicationRequest", {
-                "resourceType": "MedicationRequest",
-                "status": "active",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{p2_id}"},
-                "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "312938", "display": "Sertraline 50 MG Oral Tablet"}], "text": "Sertraline 50mg"},
-                "dosageInstruction": [{"text": "Take 1 tablet daily in the morning"}],
-            })
+                    # Medications: Albuterol, Sertraline
+                    print("  Medications:")
+                    _insert_medication(p2_pid, "Albuterol 0.09 MG/ACTUAT Metered Dose Inhaler", "2 puffs every 4-6 hours as needed for wheezing")
+                    _insert_medication(p2_pid, "Sertraline 50 MG Oral Tablet", "Take 1 tablet daily in the morning")
 
-            # Allergies: Sulfa drugs, Latex
-            await create_resource(client, token, "AllergyIntolerance", {
-                "resourceType": "AllergyIntolerance",
-                "patient": {"reference": f"Patient/{p2_id}"},
-                "code": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "10831", "display": "Sulfamethoxazole"}], "text": "Sulfa drugs"},
-                "type": "allergy",
-                "category": ["medication"],
-                "criticality": "high",
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
-            })
-            await create_resource(client, token, "AllergyIntolerance", {
-                "resourceType": "AllergyIntolerance",
-                "patient": {"reference": f"Patient/{p2_id}"},
-                "code": {"text": "Latex"},
-                "type": "allergy",
-                "category": ["environment"],
-                "criticality": "low",
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical", "code": "active"}]},
-            })
+                    # Allergies: Sulfa drugs, Latex
+                    print("  Allergies:")
+                    _insert_allergy(p2_pid, "Sulfa drugs", "high", "Severe rash and fever")
+                    _insert_allergy(p2_pid, "Latex", "low", "Contact dermatitis")
         print()
 
         # ========== PATIENT 3: Robert Chen ==========
@@ -274,62 +282,29 @@ async def seed():
         if not p3_id:
             print("Failed to find/create Patient 3. Continuing...")
         else:
-            # Conditions: CAD, AFib, GERD
-            await create_resource(client, token, "Condition", {
-                "resourceType": "Condition",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I25.10", "display": "Atherosclerotic heart disease of native coronary artery without angina pectoris"}]},
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-                "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-            })
-            await create_resource(client, token, "Condition", {
-                "resourceType": "Condition",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "I48.91", "display": "Unspecified atrial fibrillation"}]},
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-                "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-            })
-            await create_resource(client, token, "Condition", {
-                "resourceType": "Condition",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "code": {"coding": [{"system": "http://hl7.org/fhir/sid/icd-10-cm", "code": "K21.0", "display": "Gastro-esophageal reflux disease with esophagitis"}]},
-                "clinicalStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-clinical", "code": "active"}]},
-                "verificationStatus": {"coding": [{"system": "http://terminology.hl7.org/CodeSystem/condition-ver-status", "code": "confirmed"}]},
-            })
+            p3_pid = _get_pid_by_name("Robert", "Chen")
+            if not p3_pid:
+                print("  WARNING: Could not find DB PID for Robert Chen")
+            else:
+                existing = _run_db_query(f"SELECT COUNT(*) as cnt FROM lists WHERE pid={p3_pid};")
+                has_data = "0" not in existing if existing else False
+                if has_data:
+                    print("  Clinical data already exists, skipping inserts")
+                else:
+                    # Conditions: CAD, AFib, GERD
+                    print("  Conditions:")
+                    _insert_condition(p3_pid, "Atherosclerotic heart disease of native coronary artery without angina pectoris", "I25.10")
+                    _insert_condition(p3_pid, "Unspecified atrial fibrillation", "I48.91")
+                    _insert_condition(p3_pid, "Gastro-esophageal reflux disease with esophagitis", "K21.0")
 
-            # Medications: Warfarin, Metoprolol, Omeprazole, Aspirin (interaction case!)
-            await create_resource(client, token, "MedicationRequest", {
-                "resourceType": "MedicationRequest",
-                "status": "active",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "855288", "display": "Warfarin Sodium 5 MG Oral Tablet"}], "text": "Warfarin 5mg"},
-                "dosageInstruction": [{"text": "Take 1 tablet daily, monitor INR"}],
-            })
-            await create_resource(client, token, "MedicationRequest", {
-                "resourceType": "MedicationRequest",
-                "status": "active",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "866924", "display": "Metoprolol Tartrate 25 MG Oral Tablet"}], "text": "Metoprolol 25mg"},
-                "dosageInstruction": [{"text": "Take 1 tablet twice daily"}],
-            })
-            await create_resource(client, token, "MedicationRequest", {
-                "resourceType": "MedicationRequest",
-                "status": "active",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "198053", "display": "Omeprazole 20 MG Delayed Release Oral Capsule"}], "text": "Omeprazole 20mg"},
-                "dosageInstruction": [{"text": "Take 1 capsule daily before breakfast"}],
-            })
-            await create_resource(client, token, "MedicationRequest", {
-                "resourceType": "MedicationRequest",
-                "status": "active",
-                "intent": "order",
-                "subject": {"reference": f"Patient/{p3_id}"},
-                "medicationCodeableConcept": {"coding": [{"system": "http://www.nlm.nih.gov/research/umls/rxnorm", "code": "318272", "display": "Aspirin 81 MG Delayed Release Oral Tablet"}], "text": "Aspirin 81mg"},
-                "dosageInstruction": [{"text": "Take 1 tablet daily"}],
-            })
+                    # Medications: Warfarin, Metoprolol, Omeprazole, Aspirin (interaction case!)
+                    print("  Medications:")
+                    _insert_medication(p3_pid, "Warfarin Sodium 5 MG Oral Tablet", "Take 1 tablet daily, monitor INR")
+                    _insert_medication(p3_pid, "Metoprolol Tartrate 25 MG Oral Tablet", "Take 1 tablet twice daily")
+                    _insert_medication(p3_pid, "Omeprazole 20 MG Delayed Release Oral Capsule", "Take 1 capsule daily before breakfast")
+                    _insert_medication(p3_pid, "Aspirin 81 MG Delayed Release Oral Tablet", "Take 1 tablet daily")
+
+                    # No allergies for Robert Chen
         print()
 
         # ========== PRACTITIONERS ==========
