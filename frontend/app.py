@@ -26,6 +26,8 @@ if "messages" not in st.session_state:
     st.session_state.messages = []
 if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
+if "streaming" not in st.session_state:
+    st.session_state.streaming = False
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -229,10 +231,15 @@ def render_metadata(metadata: dict, show_verification: bool) -> None:
                 )
 
 
-# ── Helper: feedback buttons ─────────────────────────────────────────────────
+# ── Helper: feedback buttons (fragment to avoid full-page rerun) ─────────────
 
+@st.fragment
 def render_feedback_buttons(msg_idx: int) -> None:
-    """Render thumbs-up / thumbs-down buttons for a message."""
+    """Render thumbs-up / thumbs-down buttons for a message.
+
+    Uses @st.fragment so clicking feedback doesn't trigger a full rerun,
+    which would kill any in-progress streaming response.
+    """
     existing = st.session_state.messages[msg_idx].get("feedback")
     if existing:
         icon = "👍" if existing == "up" else "👎"
@@ -244,19 +251,32 @@ def render_feedback_buttons(msg_idx: int) -> None:
         if st.button("👍", key=f"up_{msg_idx}"):
             send_feedback(st.session_state.conversation_id, "up")
             st.session_state.messages[msg_idx]["feedback"] = "up"
-            st.rerun()
     with col2:
         if st.button("👎", key=f"down_{msg_idx}"):
             send_feedback(st.session_state.conversation_id, "down")
             st.session_state.messages[msg_idx]["feedback"] = "down"
-            st.rerun()
 
 
 # ── Helper: send and display (streaming) ────────────────────────────────────
 
 def send_and_display(user_prompt: str) -> None:
-    """Send a message to the backend and stream the response."""
+    """Send a message to the backend and stream the response.
+
+    Saves the assistant message to session state incrementally so that
+    if a Streamlit rerun occurs mid-stream (e.g. widget click), the
+    partial response is preserved and rendered from history.
+    """
     st.session_state.messages.append({"role": "user", "content": user_prompt})
+
+    # Pre-allocate the assistant message slot so reruns don't lose it
+    assistant_idx = len(st.session_state.messages)
+    st.session_state.messages.append({
+        "role": "assistant",
+        "content": "",
+        "metadata": {},
+        "feedback": None,
+    })
+    st.session_state.streaming = True
 
     with st.chat_message("user"):
         st.markdown(user_prompt)
@@ -290,6 +310,8 @@ def send_and_display(user_prompt: str) -> None:
                     text = evt_data.get("text", "")
                     full_text += text
                     text_placeholder.markdown(full_text + "▌")
+                    # Save partial content so reruns preserve it
+                    st.session_state.messages[assistant_idx]["content"] = full_text
 
                 elif evt_type == "done":
                     full_text = evt_data.get("response", full_text)
@@ -301,6 +323,9 @@ def send_and_display(user_prompt: str) -> None:
                         "token_usage": evt_data.get("token_usage", {}),
                         "latency_ms": evt_data.get("latency_ms"),
                     }
+                    # Save final content and metadata
+                    st.session_state.messages[assistant_idx]["content"] = full_text
+                    st.session_state.messages[assistant_idx]["metadata"] = final_metadata
 
                 elif evt_type == "error":
                     had_error = True
@@ -310,22 +335,20 @@ def send_and_display(user_prompt: str) -> None:
 
             # Clear status and show final text
             status_placeholder.empty()
+            st.session_state.streaming = False
 
             if not had_error:
                 text_placeholder.markdown(full_text)
                 render_metadata(final_metadata, show_details)
-
-                msg_idx = len(st.session_state.messages)
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": full_text,
-                    "metadata": final_metadata,
-                    "feedback": None,
-                })
-                render_feedback_buttons(msg_idx)
+                render_feedback_buttons(assistant_idx)
+            else:
+                # Remove the placeholder message on error
+                if st.session_state.messages[assistant_idx]["content"] == "":
+                    st.session_state.messages.pop(assistant_idx)
 
         except Exception as e:
             status_placeholder.empty()
+            st.session_state.streaming = False
             # Fall back to non-streaming on any streaming error
             try:
                 result = send_message(user_prompt, st.session_state.conversation_id)
@@ -342,19 +365,18 @@ def send_and_display(user_prompt: str) -> None:
                     "token_usage": result.get("token_usage", {}),
                     "latency_ms": result.get("latency_ms"),
                 }
-                render_metadata(metadata, show_details)
+                # Update the pre-allocated slot
+                st.session_state.messages[assistant_idx]["content"] = response
+                st.session_state.messages[assistant_idx]["metadata"] = metadata
 
-                msg_idx = len(st.session_state.messages)
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": response,
-                    "metadata": metadata,
-                    "feedback": None,
-                })
-                render_feedback_buttons(msg_idx)
+                render_metadata(metadata, show_details)
+                render_feedback_buttons(assistant_idx)
 
             except Exception as fallback_error:
                 st.error(f"Error communicating with backend: {fallback_error}")
+                # Remove empty placeholder on total failure
+                if st.session_state.messages[assistant_idx]["content"] == "":
+                    st.session_state.messages.pop(assistant_idx)
 
 
 # ── Custom CSS for suggestion cards ─────────────────────────────────────────
@@ -399,6 +421,10 @@ st.markdown(
 
 # Display conversation history
 for idx, msg in enumerate(st.session_state.messages):
+    # Skip empty assistant placeholders from interrupted streams
+    if msg["role"] == "assistant" and not msg.get("content"):
+        continue
+
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
