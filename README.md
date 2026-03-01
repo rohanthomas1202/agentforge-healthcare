@@ -1,6 +1,6 @@
 # AgentForge Healthcare
 
-An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/), the open-source Electronic Health Records system. Uses a LangGraph agent with 5 specialized tools to query real patient data via FHIR R4 APIs, with a 3-layer verification pipeline to ensure safe, grounded responses.
+An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/), the open-source Electronic Health Records system. Uses a LangGraph agent with 14 specialized tools to query real patient data via FHIR R4 APIs and custom MariaDB tables, with a 3-layer verification pipeline to ensure safe, grounded responses.
 
 **Live Demo:** [http://54.236.183.203](http://54.236.183.203/)
 
@@ -11,19 +11,20 @@ An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/)
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Agent architecture, tools, verification pipeline, deployment |
 | [COST_ANALYSIS.md](COST_ANALYSIS.md) | AI cost breakdown, production projections, optimization strategies |
 | [DEMO_SCRIPT.md](DEMO_SCRIPT.md) | 5-minute demo walkthrough script |
-| [Eval Dataset](https://github.com/rohanthomas1202/healthcare-agent-eval) | Open source eval dataset (57 cases, MIT license) |
+| [BOUNTY.md](BOUNTY.md) | Bounty features: FDA safety, care gaps, insurance, lab results |
+| [Eval Dataset](https://github.com/rohanthomas1202/healthcare-agent-eval) | Open source eval dataset (92 cases, MIT license) |
 | [OpenEMR Integration](https://github.com/rohanthomas1202/openemr/tree/master/agentforge) | Agent integrated into OpenEMR fork |
 
 ## Evaluation Results
 
-**57/57 test cases passing (100%)** across 4 categories:
+**92 test cases** across 4 categories covering all 14 tools:
 
-| Category | Passed | Rate | p50 Latency |
-|----------|--------|------|-------------|
-| Happy path | 25/25 | 100% | 11.5s |
-| Edge case | 15/15 | 100% | 10.6s |
-| Adversarial | 10/10 | 100% | 8.6s |
-| Multi-step | 7/7 | 100% | 19.5s |
+| Category | Count | Description |
+|----------|-------|-------------|
+| Happy path | 35+ | Core tool functionality across all tools |
+| Edge case | 15+ | Missing data, unknown inputs, boundary conditions |
+| Adversarial | 11 | Prompt injection, unsafe queries, role overrides |
+| Multi-step | 15+ | Complex reasoning chains across multiple tools |
 
 ## Architecture
 
@@ -36,13 +37,13 @@ User (Streamlit Chat UI)
         |
    LangGraph Agent (Claude / GPT-4)
         |
-   +-----------+-----------+-----------+-----------+
-   |           |           |           |           |
-Patient    Drug        Symptom    Provider   Appointment
-Summary    Interaction  Lookup     Search     Availability
-   |           |           |           |           |
-   +--------- OpenEMR FHIR R4 API ---+           |
-              (OAuth2 authenticated)
+   14 Specialized Tools:
+   ├── Patient Summary, Drug Interactions, Symptoms, Providers, Appointments
+   ├── FDA Safety, Drug Recalls, Clinical Trials, Allergy Check, Vitals
+   └── Care Gaps, Insurance Coverage, Lab Results, Update Care Gap
+        |
+   +--- OpenEMR FHIR R4 API ---+--- Custom MariaDB Tables ---+
+        (OAuth2 authenticated)     (care gaps, insurance, labs)
         |
    Verification Pipeline
    ├── Drug Safety (contradiction detection)
@@ -61,15 +62,24 @@ Summary    Interaction  Lookup     Search     Availability
 5. Verification pipeline checks the response for drug safety, confidence, and grounding
 6. Response is returned with confidence score, disclaimers, and verification metadata
 
-## Tools
+## Tools (14)
 
 | Tool | Description |
 |------|-------------|
-| `patient_summary` | Retrieves a patient's demographics, conditions, medications, allergies, and immunizations |
-| `drug_interaction_check` | Checks a list of medications against a database of ~50 known interaction pairs with severity levels |
-| `symptom_lookup` | Maps symptoms to possible conditions using an 18-symptom knowledge base covering 70+ conditions |
-| `provider_search` | Searches for practitioners by name or specialty via FHIR Practitioner/PractitionerRole resources |
-| `appointment_availability` | Queries upcoming appointment slots for a given provider |
+| `patient_summary` | Retrieves demographics, conditions, medications, allergies, immunizations |
+| `drug_interaction_check` | Checks medications against ~50 known interaction pairs with severity |
+| `symptom_lookup` | Maps symptoms to 70+ conditions with triage urgency levels |
+| `provider_search` | Searches practitioners by name or specialty via FHIR |
+| `appointment_availability` | Queries appointment slots for a provider |
+| `fda_drug_safety` | FDA boxed warnings, contraindications, FAERS adverse events |
+| `record_vitals` | Records BP, heart rate, temperature, weight into OpenEMR |
+| `clinical_trials_search` | Searches ClinicalTrials.gov for recruiting studies |
+| `allergy_check` | Drug-allergy cross-reactivity detection |
+| `drug_recall_check` | FDA recall alerts for medications |
+| `care_gap_analysis` | USPSTF preventive screening gap tracker (15 protocols) |
+| `update_care_gap` | Mark screenings as completed, declined, or reset |
+| `insurance_coverage_check` | Formulary tier, copay, prior auth, generic alternatives |
+| `lab_results_analysis` | Lab trends, reference ranges, critical value flagging |
 
 ## Verification Systems
 
@@ -90,7 +100,7 @@ All three run via `run_verification_pipeline()` on every response before it reac
 - **EHR System:** OpenEMR (FHIR R4 API with OAuth2)
 - **Observability:** LangSmith + custom metrics (token tracking, latency, feedback)
 - **Deployment:** AWS Lightsail (Docker Compose: MariaDB + OpenEMR + AgentForge)
-- **Evaluation:** 57 test cases, pytest-parametrized, 100% pass rate
+- **Evaluation:** 92 test cases, pytest-parametrized
 
 ## Project Structure
 
@@ -107,13 +117,22 @@ agentforge-healthcare/
 │   │   └── state.py             # Agent state definition
 │   ├── api/
 │   │   └── routes.py            # /api/health, /api/chat endpoints
+│   ├── openemr_db.py              # Async MariaDB connection pool
 │   ├── tools/
-│   │   ├── registry.py          # Tool registry
+│   │   ├── registry.py            # Tool registry (14 tools)
 │   │   ├── patient_summary.py
 │   │   ├── drug_interaction.py
 │   │   ├── symptom_lookup.py
 │   │   ├── provider_search.py
 │   │   ├── appointment_availability.py
+│   │   ├── fda_drug_safety.py
+│   │   ├── record_vitals.py
+│   │   ├── clinical_trials.py
+│   │   ├── allergy_checker.py
+│   │   ├── drug_recall.py
+│   │   ├── care_gap_analysis.py
+│   │   ├── insurance_coverage.py
+│   │   ├── lab_results.py
 │   │   ├── drug_interactions_db.py   # ~50 interaction pairs
 │   │   ├── symptom_conditions_db.py  # 18 symptoms, 70+ conditions
 │   │   └── fhir_helpers.py           # FHIR resource parsers
@@ -126,7 +145,7 @@ agentforge-healthcare/
 │   ├── app.py                   # Streamlit chat UI
 │   └── api_client.py            # HTTP client for backend
 ├── evals/
-│   ├── test_cases.json          # 57 test cases
+│   ├── test_cases.json          # 92 test cases
 │   ├── results.json             # Evaluation results
 │   ├── test_eval.py             # Test runner
 │   └── helpers.py               # Eval utilities
@@ -210,14 +229,14 @@ python scripts/seed_providers_appointments.py
 
 ## Evaluation
 
-57 test cases across 4 categories:
+92 test cases across 4 categories covering all 14 tools:
 
 | Category | Count | Description |
 |----------|-------|-------------|
-| Happy path | 20+ | Standard queries that should work correctly |
-| Edge cases | 10+ | Boundary conditions, missing data, unusual inputs |
-| Adversarial | 10+ | Prompt injection, out-of-scope requests, unsafe queries |
-| Multi-step | 10+ | Queries requiring chained tool calls |
+| Happy path | 35+ | Standard queries across all tools |
+| Edge cases | 15+ | Boundary conditions, missing data, unknown inputs |
+| Adversarial | 11 | Prompt injection, unsafe queries, role overrides |
+| Multi-step | 15+ | Complex reasoning chains across multiple tools |
 
 Run evals:
 

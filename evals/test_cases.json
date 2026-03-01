@@ -1720,5 +1720,361 @@
     "verification_safe": null,
     "max_latency_seconds": 60,
     "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_21",
+    "category": "happy_path",
+    "description": "Care gap analysis for John Smith",
+    "query": "What preventive screenings is John Smith due for?",
+    "expected_tools": [
+      "care_gap_analysis"
+    ],
+    "response_must_contain": [
+      "John Smith"
+    ],
+    "response_must_contain_any": [
+      "screening",
+      "due",
+      "USPSTF",
+      "preventive",
+      "overdue",
+      "care gap"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_22",
+    "category": "happy_path",
+    "description": "Care gap analysis for Sarah Johnson (female-specific screenings)",
+    "query": "What preventive screenings is Sarah Johnson overdue for?",
+    "expected_tools": [
+      "care_gap_analysis"
+    ],
+    "response_must_contain": [
+      "Sarah Johnson"
+    ],
+    "response_must_contain_any": [
+      "screening",
+      "due",
+      "overdue",
+      "preventive",
+      "Cervical",
+      "Breast",
+      "mammography"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_23",
+    "category": "happy_path",
+    "description": "Update care gap — mark screening as completed",
+    "query": "Mark the depression screening as completed for John Smith",
+    "expected_tools": [
+      "update_care_gap"
+    ],
+    "response_must_contain_any": [
+      "completed",
+      "marked",
+      "updated",
+      "Depression"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_24",
+    "category": "edge_case",
+    "description": "Care gap for nonexistent patient",
+    "query": "What preventive screenings is FakePatient999 due for?",
+    "expected_tools": [
+      "care_gap_analysis"
+    ],
+    "response_must_contain_any": [
+      "not found",
+      "no patient",
+      "could not find",
+      "unable",
+      "doesn't exist",
+      "does not exist"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.0,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_25",
+    "category": "multi_step",
+    "description": "Care gap + patient summary combined",
+    "query": "Give me John Smith's patient summary and then check what preventive screenings he needs",
+    "expected_tools": [
+      "patient_summary"
+    ],
+    "response_must_contain": [
+      "John Smith"
+    ],
+    "response_must_contain_any": [
+      "screening",
+      "Diabetes",
+      "Metformin",
+      "preventive",
+      "due"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 60,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_26",
+    "category": "happy_path",
+    "description": "Insurance coverage check — Metformin for John Smith",
+    "query": "Is Metformin covered by John Smith's insurance?",
+    "expected_tools": [
+      "insurance_coverage_check"
+    ],
+    "response_must_contain_any": [
+      "Metformin",
+      "covered",
+      "tier",
+      "copay",
+      "formulary",
+      "insurance"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_27",
+    "category": "happy_path",
+    "description": "Insurance coverage — Warfarin for Robert Chen",
+    "query": "Check insurance coverage for Warfarin for Robert Chen",
+    "expected_tools": [
+      "insurance_coverage_check"
+    ],
+    "response_must_contain_any": [
+      "Warfarin",
+      "covered",
+      "tier",
+      "copay",
+      "Robert Chen",
+      "insurance"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_28",
+    "category": "happy_path",
+    "description": "Insurance — generic alternative query",
+    "query": "Is there a generic alternative for Lipitor on John Smith's insurance?",
+    "expected_tools": [
+      "insurance_coverage_check"
+    ],
+    "response_must_contain_any": [
+      "generic",
+      "alternative",
+      "Atorvastatin",
+      "Lipitor",
+      "tier",
+      "formulary"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_29",
+    "category": "edge_case",
+    "description": "Insurance coverage for non-formulary drug",
+    "query": "Is FakeDrug999 covered by John Smith's insurance?",
+    "expected_tools": [
+      "insurance_coverage_check"
+    ],
+    "response_must_contain_any": [
+      "not covered",
+      "not on formulary",
+      "not found",
+      "no coverage",
+      "not in",
+      "alternative"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.0,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_30",
+    "category": "multi_step",
+    "description": "Insurance + drug interaction combined",
+    "query": "Is Metformin covered by John Smith's insurance and does it interact with his other medications?",
+    "expected_tools": [
+      "insurance_coverage_check"
+    ],
+    "response_must_contain_any": [
+      "Metformin",
+      "covered",
+      "insurance",
+      "copay",
+      "interaction",
+      "John Smith"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 60,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_31",
+    "category": "happy_path",
+    "description": "Lab results analysis for John Smith",
+    "query": "Show me John Smith's lab results",
+    "expected_tools": [
+      "lab_results_analysis"
+    ],
+    "response_must_contain_any": [
+      "HbA1c",
+      "glucose",
+      "cholesterol",
+      "lab",
+      "normal",
+      "abnormal",
+      "high",
+      "low"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_32",
+    "category": "happy_path",
+    "description": "Lab results — HbA1c trend for John Smith",
+    "query": "What is John Smith's HbA1c trend?",
+    "expected_tools": [
+      "lab_results_analysis"
+    ],
+    "response_must_contain_any": [
+      "HbA1c",
+      "trend",
+      "improving",
+      "decreasing",
+      "7.2",
+      "7.8",
+      "8.1"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_33",
+    "category": "happy_path",
+    "description": "Lab results — Robert Chen critical values",
+    "query": "Are any of Robert Chen's lab values critical or abnormal?",
+    "expected_tools": [
+      "lab_results_analysis"
+    ],
+    "response_must_contain_any": [
+      "INR",
+      "BNP",
+      "eGFR",
+      "abnormal",
+      "critical",
+      "high",
+      "low",
+      "Robert Chen"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_34",
+    "category": "happy_path",
+    "description": "Lab results — kidney function filter",
+    "query": "Show me Robert Chen's kidney function tests",
+    "expected_tools": [
+      "lab_results_analysis"
+    ],
+    "response_must_contain_any": [
+      "Creatinine",
+      "eGFR",
+      "renal",
+      "kidney",
+      "BUN"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.5,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
+  },
+  {
+    "id": "bounty_35",
+    "category": "edge_case",
+    "description": "Lab results for patient with no labs",
+    "query": "Show me lab results for FakePatient999",
+    "expected_tools": [
+      "lab_results_analysis"
+    ],
+    "response_must_contain_any": [
+      "not found",
+      "no patient",
+      "no lab",
+      "could not find",
+      "unable",
+      "no results"
+    ],
+    "response_must_not_contain": [],
+    "min_confidence": 0.0,
+    "max_confidence": 1.0,
+    "verification_safe": null,
+    "max_latency_seconds": 30,
+    "allow_extra_tools": true
   }
 ]
