@@ -13,6 +13,9 @@ from langchain_core.tools import tool
 from app.fhir_client import fhir_client
 from app.tools.drug_interactions_db import check_interactions, normalize_drug_name
 from app.tools.fhir_helpers import extract_medication_request
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @tool
@@ -41,6 +44,7 @@ async def drug_interaction_check(
         # If patient provided, fetch their current medications too
         patient_meds_note = ""
         if patient_identifier:
+            logger.info("Patient data accessed", extra={"operation": "patient_data_access", "patient": patient_identifier, "tool": "drug_interaction_check"})
             patient_meds = await _fetch_patient_medications(patient_identifier)
             if patient_meds:
                 patient_meds_note = f"\nNote: Also included {len(patient_meds)} medication(s) from patient's medical record: {', '.join(patient_meds)}"

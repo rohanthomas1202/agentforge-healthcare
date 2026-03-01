@@ -11,6 +11,9 @@ from langchain_core.tools import tool
 
 from app.fhir_client import fhir_client
 from app.tools.fhir_helpers import extract_appointment, extract_practitioner
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Business hours configuration
 BUSINESS_START_HOUR = 9   # 9 AM

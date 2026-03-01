@@ -18,6 +18,9 @@ from app.tools.fhir_helpers import (
     extract_patient_name,
     extract_patient_summary,
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @tool
@@ -36,6 +39,7 @@ async def patient_summary(patient_identifier: str) -> str:
         if not patient:
             return f"No patient found matching '{patient_identifier}'. Please check the name or ID and try again."
 
+        logger.info("Patient data accessed", extra={"operation": "patient_data_access", "patient": patient_identifier, "tool": "patient_summary"})
         patient_id = patient.get("id")
         demographics = extract_patient_summary(patient)
 

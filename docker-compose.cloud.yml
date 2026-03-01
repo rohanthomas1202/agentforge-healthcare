@@ -1,0 +1,84 @@
+version: '3.8'
+
+# AgentForge Healthcare — Cloud Deployment (AWS Lightsail)
+# 3 services: MariaDB + OpenEMR (internal) + AgentForge (exposed on port 80)
+#
+# Usage:
+#   1. Create .env with API keys (see .env.cloud.example)
+#   2. docker compose -f docker-compose.cloud.yml up -d --build
+#   3. Wait ~3-5 min for OpenEMR first boot
+#   4. Register OAuth client (see plan docs)
+#   5. Run seed scripts
+
+services:
+  mariadb:
+    image: mariadb:11.4
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass_change_me
+      MYSQL_DATABASE: openemr
+      MYSQL_USER: openemr
+      MYSQL_PASSWORD: openemr
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  openemr:
+    image: openemr/openemr:7.0.2
+    restart: always
+    depends_on:
+      mariadb:
+        condition: service_healthy
+    environment:
+      MYSQL_HOST: mariadb
+      MYSQL_ROOT_PASS: root_pass_change_me
+      MYSQL_USER: openemr
+      MYSQL_PASS: openemr
+      MYSQL_DATABASE: openemr
+      OE_USER: admin
+      OE_PASS: pass
+      MANUAL_SETUP: "no"
+    volumes:
+      - openemr_data:/var/www/localhost/htdocs/openemr/sites
+    networks:
+      - internal
+    # No ports exposed — only accessible via Docker internal network
+
+  agentforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "80:80"
+    env_file:
+      - .env
+    environment:
+      PORT: "80"
+      USE_MOCK_DATA: "false"
+      OPENEMR_BASE_URL: https://openemr
+      OPENEMR_FHIR_URL: https://openemr/apis/default/fhir
+      OPENEMR_TOKEN_URL: https://openemr/oauth2/default/token
+      OPENEMR_USERNAME: admin
+      OPENEMR_PASSWORD: pass
+      FHIR_VERIFY_SSL: "false"
+      ALLOWED_ORIGINS: "*"
+      ENVIRONMENT: production
+    depends_on:
+      - openemr
+    networks:
+      - internal
+
+volumes:
+  mariadb_data:
+  openemr_data:
+
+networks:
+  internal:
+    driver: bridge

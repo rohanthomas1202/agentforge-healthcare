@@ -14,8 +14,11 @@ import time
 from typing import Any, Optional
 
 import httpx
+import logging
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 class FHIRClient:
@@ -25,10 +28,10 @@ class FHIRClient:
         self._access_token: Optional[str] = None
         self._refresh_token: Optional[str] = None
         self._token_expires_at: float = 0
-        # Disable SSL verification for local dev (self-signed cert)
+        # SSL verification controlled by FHIR_VERIFY_SSL setting (default True)
         # ngrok-skip-browser-warning header prevents ngrok interstitial page
         self._http = httpx.AsyncClient(
-            verify=False,
+            verify=settings.fhir_verify_ssl,
             timeout=30.0,
             headers={"ngrok-skip-browser-warning": "true"},
         )
@@ -194,10 +197,130 @@ class FHIRClient:
         await self._http.aclose()
 
 
-# Singleton instance — use MockFHIRClient when USE_MOCK_DATA is set
+class StandardApiClient:
+    """HTTP client for OpenEMR's Standard REST API (non-FHIR) with OAuth2 auth.
+
+    Used for write operations like recording vitals, creating encounters,
+    and writing SOAP notes that aren't available through the FHIR API.
+    Targets /apis/default/api/ with api:oemr scope.
+    """
+
+    def __init__(self):
+        self._access_token: Optional[str] = None
+        self._refresh_token: Optional[str] = None
+        self._token_expires_at: float = 0
+        self._http = httpx.AsyncClient(
+            verify=settings.fhir_verify_ssl,
+            timeout=30.0,
+            headers={"ngrok-skip-browser-warning": "true"},
+        )
+        self._base_url = f"{settings.openemr_base_url}/apis/default/api"
+
+    async def _get_token(self) -> str:
+        """Get a valid access token, refreshing if needed."""
+        now = time.time()
+        if self._access_token and now < self._token_expires_at - 60:
+            return self._access_token
+        if self._refresh_token:
+            try:
+                return await self._refresh_access_token()
+            except Exception:
+                pass
+        return await self._password_grant()
+
+    async def _password_grant(self) -> str:
+        """Get a new token with Standard API scopes."""
+        response = await self._http.post(
+            settings.openemr_token_url,
+            data={
+                "grant_type": "password",
+                "username": settings.openemr_username,
+                "password": settings.openemr_password,
+                "user_role": "users",
+                "client_id": settings.openemr_client_id,
+                "client_secret": settings.openemr_client_secret,
+                "scope": (
+                    "openid api:oemr "
+                    "user/vital.crus user/encounter.crus "
+                    "user/soap_note.crus"
+                ),
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        self._access_token = data["access_token"]
+        self._refresh_token = data.get("refresh_token")
+        self._token_expires_at = time.time() + data.get("expires_in", 3600)
+        return self._access_token
+
+    async def _refresh_access_token(self) -> str:
+        """Refresh an expired access token."""
+        response = await self._http.post(
+            settings.openemr_token_url,
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": self._refresh_token,
+                "client_id": settings.openemr_client_id,
+                "client_secret": settings.openemr_client_secret,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        self._access_token = data["access_token"]
+        self._refresh_token = data.get("refresh_token", self._refresh_token)
+        self._token_expires_at = time.time() + data.get("expires_in", 3600)
+        return self._access_token
+
+    async def get(self, path: str, params: Optional[dict] = None) -> dict[str, Any]:
+        """GET a Standard API resource."""
+        token = await self._get_token()
+        resp = await self._http.get(
+            f"{self._base_url}/{path}",
+            params=params,
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def post(self, path: str, json_body: dict) -> dict[str, Any]:
+        """POST to create a Standard API resource."""
+        token = await self._get_token()
+        resp = await self._http.post(
+            f"{self._base_url}/{path}",
+            json=json_body,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def put(self, path: str, json_body: dict) -> dict[str, Any]:
+        """PUT to update a Standard API resource."""
+        token = await self._get_token()
+        resp = await self._http.put(
+            f"{self._base_url}/{path}",
+            json=json_body,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
+
+    async def close(self):
+        """Close the HTTP client."""
+        await self._http.aclose()
+
+
+# Singleton instances — use mocks when USE_MOCK_DATA is set
 if os.getenv("USE_MOCK_DATA", "").lower() in ("true", "1", "yes"):
     from app.mock_fhir_client import MockFHIRClient
     fhir_client = MockFHIRClient()  # type: ignore[assignment]
-    print("[startup] Using MOCK data (no OpenEMR connection)")
+    standard_api_client: Optional[StandardApiClient] = None
+    logger.info("Using MOCK data (no OpenEMR connection)")
 else:
     fhir_client = FHIRClient()
+    standard_api_client = StandardApiClient()

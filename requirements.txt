@@ -25,6 +25,12 @@ pytest-asyncio==0.25.0
 # CORS support
 python-multipart==0.0.20
 
+# Reliability
+tenacity>=8.2.0
+
+# Security
+slowapi==0.1.9
+
 # Frontend
 streamlit>=1.40.0
 requests>=2.31.0

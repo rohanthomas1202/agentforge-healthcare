@@ -1,0 +1,5 @@
+# Force LF line endings for deployment scripts (prevent CRLF issues in Docker)
+deploy/*.sh text eol=lf
+deploy/*.conf text eol=lf
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf

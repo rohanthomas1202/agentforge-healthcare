@@ -7,6 +7,7 @@ Run: cd agentforge-healthcare && ./venv/Scripts/python.exe scripts/seed_data.py
 """
 
 import asyncio
+import os
 import subprocess
 import time
 from typing import Optional
@@ -14,16 +15,15 @@ from typing import Optional
 import httpx
 
 
-# --- Configuration ---
-BASE_URL = "https://localhost:9300"
+# --- Configuration (reads from env vars, falls back to local dev defaults) ---
+BASE_URL = os.getenv("OPENEMR_BASE_URL", "https://localhost:9300")
 TOKEN_URL = f"{BASE_URL}/oauth2/default/token"
 FHIR_URL = f"{BASE_URL}/apis/default/fhir"
 
-# From .env / memory
-CLIENT_ID = "Xkkz8itnTxUSZacmtgeVEHckBfIoZbq2Pa6mNFPGC2g"
-CLIENT_SECRET = "NIs4l6mPdf3Qpz5gHo2f4NP8tDm8jQ2xTPuQBDEs4av1YRTzZvpk_L48JTwE-gUpWwlrPDciC-MU30LdjN6_CA"
-USERNAME = "admin"
-PASSWORD = "pass"
+CLIENT_ID = os.getenv("OPENEMR_CLIENT_ID", "Xkkz8itnTxUSZacmtgeVEHckBfIoZbq2Pa6mNFPGC2g")
+CLIENT_SECRET = os.getenv("OPENEMR_CLIENT_SECRET", "NIs4l6mPdf3Qpz5gHo2f4NP8tDm8jQ2xTPuQBDEs4av1YRTzZvpk_L48JTwE-gUpWwlrPDciC-MU30LdjN6_CA")
+USERNAME = os.getenv("OPENEMR_USERNAME", "admin")
+PASSWORD = os.getenv("OPENEMR_PASSWORD", "pass")
 
 # Write scopes for seeding
 WRITE_SCOPES = (
@@ -40,7 +40,8 @@ WRITE_SCOPES = (
 )
 
 # Docker container name for OpenEMR (used for DB inserts)
-OPENEMR_CONTAINER = None  # Auto-detected
+# Set OPENEMR_CONTAINER env var to override auto-detection (e.g., for docker compose)
+OPENEMR_CONTAINER = os.getenv("OPENEMR_CONTAINER", None)
 
 
 async def get_token(client: httpx.AsyncClient) -> str:

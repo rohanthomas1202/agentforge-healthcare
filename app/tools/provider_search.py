@@ -10,6 +10,9 @@ from langchain_core.tools import tool
 
 from app.fhir_client import fhir_client
 from app.tools.fhir_helpers import extract_practitioner, extract_practitioner_role
+import logging
+
+logger = logging.getLogger(__name__)
 
 # Map common specialty names to NUCC taxonomy codes.
 # OpenEMR's FHIR PractitionerRole only supports code-based specialty search.

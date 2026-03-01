@@ -2,7 +2,15 @@
 
 import streamlit as st
 
-from api_client import check_health, send_feedback, send_message
+from api_client import (
+    check_health,
+    delete_conversation,
+    get_conversation_history,
+    get_conversations,
+    send_feedback,
+    send_message,
+    stream_message,
+)
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
@@ -34,6 +42,43 @@ with st.sidebar:
 
     st.divider()
 
+    # ── Conversation History ──
+    st.subheader("Conversations")
+
+    if st.button("+ New Conversation", use_container_width=True):
+        st.session_state.messages = []
+        st.session_state.conversation_id = None
+        st.rerun()
+
+    conversations = get_conversations()
+    for conv in conversations:
+        is_active = conv["id"] == st.session_state.conversation_id
+        label = conv.get("title") or "Untitled"
+        if len(label) > 40:
+            label = label[:40] + "..."
+
+        col1, col2 = st.columns([8, 1])
+        with col1:
+            btn_label = f"> {label}" if is_active else label
+            if st.button(btn_label, key=f"conv_{conv['id']}", use_container_width=True, disabled=is_active):
+                history = get_conversation_history(conv["id"])
+                if "error" not in history:
+                    st.session_state.conversation_id = conv["id"]
+                    st.session_state.messages = [
+                        {"role": m["role"], "content": m["content"], "metadata": {}, "feedback": None}
+                        for m in history.get("messages", [])
+                    ]
+                    st.rerun()
+        with col2:
+            if st.button("x", key=f"del_{conv['id']}"):
+                delete_conversation(conv["id"])
+                if st.session_state.conversation_id == conv["id"]:
+                    st.session_state.messages = []
+                    st.session_state.conversation_id = None
+                st.rerun()
+
+    st.divider()
+
     # Verification detail toggle
     show_details = st.toggle("Show verification details", value=False)
 
@@ -48,19 +93,13 @@ with st.sidebar:
         ("🩺 Symptom Check", "What could cause chest pain and shortness of breath?"),
         ("👨‍⚕️ Find a Doctor", "Find me a cardiologist"),
         ("📅 Appointments", "What appointments are available with Dr. Wilson on 2026-02-25?"),
+        ("🛡️ FDA Safety", "Look up FDA safety information for Warfarin"),
+        ("❤️ Record Vitals", "Record blood pressure 120/80 and heart rate 72 for John Smith"),
     ]
 
     for label, prompt in examples:
         if st.button(label, use_container_width=True):
             st.session_state.pending_example = prompt
-
-    st.divider()
-
-    # New conversation button
-    if st.button("🔄 New Conversation", use_container_width=True):
-        st.session_state.messages = []
-        st.session_state.conversation_id = None
-        st.rerun()
 
     st.divider()
     st.caption(
@@ -187,23 +226,87 @@ def render_feedback_buttons(msg_idx: int) -> None:
             st.rerun()
 
 
-# ── Helper: send and display ─────────────────────────────────────────────────
+# ── Helper: send and display (streaming) ────────────────────────────────────
 
 def send_and_display(user_prompt: str) -> None:
-    """Send a message to the backend and display the response."""
+    """Send a message to the backend and stream the response."""
     st.session_state.messages.append({"role": "user", "content": user_prompt})
 
     with st.chat_message("user"):
         st.markdown(user_prompt)
 
     with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
+        status_placeholder = st.empty()
+        text_placeholder = st.empty()
+        status_placeholder.caption("Thinking...")
+
+        full_text = ""
+        tool_calls_seen: list[dict] = []
+        final_metadata: dict = {}
+        had_error = False
+
+        try:
+            for event in stream_message(user_prompt, st.session_state.conversation_id):
+                evt_type = event.get("event", "")
+                evt_data = event.get("data", {})
+
+                if evt_type == "thinking":
+                    st.session_state.conversation_id = evt_data.get(
+                        "conversation_id", st.session_state.conversation_id
+                    )
+
+                elif evt_type == "tool_call":
+                    tool_name = evt_data.get("tool", "unknown")
+                    tool_calls_seen.append(evt_data)
+                    status_placeholder.caption(f"Calling tool: {tool_name}...")
+
+                elif evt_type == "token":
+                    text = evt_data.get("text", "")
+                    full_text += text
+                    text_placeholder.markdown(full_text + "▌")
+
+                elif evt_type == "done":
+                    full_text = evt_data.get("response", full_text)
+                    final_metadata = {
+                        "confidence": evt_data.get("confidence"),
+                        "disclaimers": evt_data.get("disclaimers", []),
+                        "tool_calls": evt_data.get("tool_calls", tool_calls_seen),
+                        "verification": evt_data.get("verification", {}),
+                        "token_usage": evt_data.get("token_usage", {}),
+                        "latency_ms": evt_data.get("latency_ms"),
+                    }
+
+                elif evt_type == "error":
+                    had_error = True
+                    error_msg = evt_data.get("message", "Unknown error")
+                    status_placeholder.empty()
+                    st.error(f"Error: {error_msg}")
+
+            # Clear status and show final text
+            status_placeholder.empty()
+
+            if not had_error:
+                text_placeholder.markdown(full_text)
+                render_metadata(final_metadata, show_details)
+
+                msg_idx = len(st.session_state.messages)
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": full_text,
+                    "metadata": final_metadata,
+                    "feedback": None,
+                })
+                render_feedback_buttons(msg_idx)
+
+        except Exception as e:
+            status_placeholder.empty()
+            # Fall back to non-streaming on any streaming error
             try:
                 result = send_message(user_prompt, st.session_state.conversation_id)
                 response = result.get("response", "No response received.")
                 st.session_state.conversation_id = result.get("conversation_id")
 
-                st.markdown(response)
+                text_placeholder.markdown(response)
 
                 metadata = {
                     "confidence": result.get("confidence"),
@@ -213,7 +316,6 @@ def send_and_display(user_prompt: str) -> None:
                     "token_usage": result.get("token_usage", {}),
                     "latency_ms": result.get("latency_ms"),
                 }
-
                 render_metadata(metadata, show_details)
 
                 msg_idx = len(st.session_state.messages)
@@ -223,12 +325,10 @@ def send_and_display(user_prompt: str) -> None:
                     "metadata": metadata,
                     "feedback": None,
                 })
-
-                # Thumbs up / down
                 render_feedback_buttons(msg_idx)
 
-            except Exception as e:
-                st.error(f"Error communicating with backend: {e}")
+            except Exception as fallback_error:
+                st.error(f"Error communicating with backend: {fallback_error}")
 
 
 # ── Main chat area ───────────────────────────────────────────────────────────

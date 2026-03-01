@@ -9,6 +9,9 @@ from typing import List
 from langchain_core.tools import tool
 
 from app.tools.symptom_conditions_db import lookup_symptoms
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @tool

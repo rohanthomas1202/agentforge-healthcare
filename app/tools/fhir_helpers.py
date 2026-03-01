@@ -4,7 +4,11 @@ FHIR resources have deeply nested structures. These helpers extract
 commonly needed fields into simpler formats for the agent to work with.
 """
 
+import logging
+import re
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def extract_patient_name(patient: dict) -> str:
@@ -82,7 +86,6 @@ def extract_allergy(allergy: dict) -> dict[str, Any]:
         text_div = allergy.get("text", {}).get("div", "")
         if text_div:
             # Strip HTML tags from <div xmlns='...'>Name</div>
-            import re
             clean = re.sub(r"<[^>]+>", "", text_div).strip()
             if clean:
                 substance = clean
@@ -307,3 +310,145 @@ def _extract_reference_range(observation: dict) -> Optional[dict]:
         "unit": ref.get("low", {}).get("unit") or ref.get("high", {}).get("unit"),
         "text": ref.get("text"),
     }
+
+
+# ── Shared patient/medication lookup helpers ─────────────────────────────────
+
+
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_fhir_search_value(value: str) -> str:
+    """Sanitize a value used in FHIR search parameters.
+
+    Removes characters that could be interpreted as FHIR search modifiers
+    or parameter separators (|, \\, $, :).
+    """
+    # Allow only alphanumeric, spaces, hyphens, apostrophes, and periods
+    # (common in names like "O'Brien", "St. James", "Mary-Jane")
+    sanitized = re.sub(r"[^\w\s\-'.]+", "", value)
+    return sanitized.strip()[:200]  # Length cap for safety
+
+
+async def find_patient(identifier: str) -> Optional[dict]:
+    """Find a patient by name or UUID using the FHIR API.
+
+    Search strategy:
+    1. If identifier looks like a UUID, try direct resource fetch.
+    2. If identifier has multiple words, try given+family search.
+    3. Fall back to general name search.
+    4. Fall back to family-only search.
+
+    Args:
+        identifier: Patient name (e.g., "John Smith") or UUID.
+
+    Returns:
+        FHIR Patient resource dict if found, else None.
+    """
+    from app.fhir_client import fhir_client
+
+    identifier = identifier.strip()
+    if not identifier:
+        return None
+
+    # Try as UUID (strict UUID format validation)
+    if _UUID_RE.match(identifier):
+        try:
+            return await fhir_client.get_resource("Patient", identifier)
+        except Exception:
+            logger.debug("UUID lookup failed for %s", identifier)
+
+    # Sanitize the identifier for search queries
+    clean = _sanitize_fhir_search_value(identifier)
+    if not clean:
+        return None
+
+    # Try given+family split
+    parts = clean.split()
+    if len(parts) >= 2:
+        patients = await fhir_client.search(
+            "Patient", {"given": parts[0], "family": parts[-1]}
+        )
+        if patients:
+            return patients[0]
+
+    # Try general name search
+    patients = await fhir_client.search("Patient", {"name": clean})
+    if patients:
+        return patients[0]
+
+    # Try family-only search
+    patients = await fhir_client.search("Patient", {"family": clean})
+    if patients:
+        return patients[0]
+
+    return None
+
+
+async def get_patient_medications(patient_id: str) -> list[str]:
+    """Fetch a patient's current medication names from OpenEMR.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+
+    Returns:
+        List of medication display names.
+    """
+    from app.fhir_client import fhir_client
+
+    try:
+        med_requests = await fhir_client.search(
+            "MedicationRequest", {"patient": patient_id}
+        )
+        meds: list[str] = []
+        for mr in med_requests:
+            med_data = extract_medication_request(mr)
+            if med_data.get("medication") and med_data["medication"] != "Unknown":
+                meds.append(med_data["medication"])
+        return meds
+    except Exception as e:
+        logger.warning("Failed to fetch medications for patient %s: %s", patient_id, e)
+        return []
+
+
+async def get_patient_allergies(patient_id: str) -> list[dict]:
+    """Fetch a patient's allergy list from OpenEMR.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+
+    Returns:
+        List of extracted allergy dicts with substance, type, category, criticality.
+    """
+    from app.fhir_client import fhir_client
+
+    try:
+        resources = await fhir_client.search(
+            "AllergyIntolerance", {"patient": patient_id}
+        )
+        return [extract_allergy(a) for a in resources]
+    except Exception as e:
+        logger.warning("Failed to fetch allergies for patient %s: %s", patient_id, e)
+        return []
+
+
+async def get_patient_conditions(patient_id: str) -> list[dict]:
+    """Fetch a patient's active conditions from OpenEMR.
+
+    Args:
+        patient_id: FHIR Patient resource ID.
+
+    Returns:
+        List of extracted condition dicts with display, code, clinical_status.
+    """
+    from app.fhir_client import fhir_client
+
+    try:
+        resources = await fhir_client.search("Condition", {"patient": patient_id})
+        return [extract_condition(c) for c in resources]
+    except Exception as e:
+        logger.warning("Failed to fetch conditions for patient %s: %s", patient_id, e)
+        return []
