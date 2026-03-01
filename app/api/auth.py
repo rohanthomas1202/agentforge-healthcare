@@ -1,5 +1,7 @@
 """API key authentication dependency."""
 
+from typing import Optional
+
 from fastapi import HTTPException, Security, status
 from fastapi.security import APIKeyHeader
 
@@ -16,8 +18,8 @@ def _get_valid_api_keys() -> set[str]:
 
 
 async def verify_api_key(
-    api_key: str | None = Security(_api_key_header),
-) -> str | None:
+    api_key: Optional[str] = Security(_api_key_header),
+) -> Optional[str]:
     """Validate the X-API-Key header.
 
     If API_KEYS is empty/unset, authentication is disabled (open access).

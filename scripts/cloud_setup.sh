@@ -67,7 +67,7 @@ REGISTRATION_RESPONSE=$($COMPOSE exec -T openemr curl -ks -X POST \
         "token_endpoint_auth_method": "client_secret_post",
         "grant_types": ["authorization_code", "password"],
         "response_types": ["code"],
-        "scope": "openid api:fhir user/Patient.read user/Patient.write user/Encounter.read user/Condition.read user/Condition.write user/AllergyIntolerance.read user/AllergyIntolerance.write user/MedicationRequest.read user/MedicationRequest.write user/Medication.read user/Immunization.read user/Immunization.write user/Appointment.read user/Practitioner.read user/Practitioner.write user/PractitionerRole.read user/Organization.read user/Location.read user/Observation.read user/Observation.write user/Coverage.read user/DocumentReference.read"
+        "scope": "openid api:fhir user/Patient.read user/Patient.write user/Encounter.read user/Condition.read user/AllergyIntolerance.read user/MedicationRequest.read user/Medication.read user/Immunization.read user/Appointment.read user/Practitioner.read user/Practitioner.write user/PractitionerRole.read user/Organization.read user/Location.read user/Observation.read user/Coverage.read user/DocumentReference.read"
     }')
 
 # Extract client_id and client_secret from JSON response

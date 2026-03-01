@@ -456,8 +456,16 @@ async def run_agent_stream(
                 if chunk:
                     content = getattr(chunk, "content", "")
                     if content:
-                        full_text += content
-                        yield _sse("token", {"text": content})
+                        if isinstance(content, list):
+                            text = "".join(
+                                block.get("text", "") if isinstance(block, dict) else str(block)
+                                for block in content
+                            )
+                        else:
+                            text = content
+                        if text:
+                            full_text += text
+                            yield _sse("token", {"text": text})
 
     except asyncio.TimeoutError:
         latency_ms = (time.time() - t_start) * 1000
@@ -492,7 +500,11 @@ async def run_agent_stream(
         try:
             result = await _agent_graph.ainvoke(initial_state)
             ai_messages = result["messages"]
-            full_text = ai_messages[-1].content
+            fallback_content = ai_messages[-1].content
+            full_text = "".join(
+                b.get("text", "") if isinstance(b, dict) else str(b)
+                for b in fallback_content
+            ) if isinstance(fallback_content, list) else fallback_content
         except Exception:
             yield _sse("error", {"message": "Failed to get response."})
             return
