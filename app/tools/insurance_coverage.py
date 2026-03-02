@@ -38,12 +38,15 @@ TIER_LABELS = {
 @tool
 async def insurance_coverage_check(
     patient_identifier: str,
-    medication_name: str,
+    medication_name: Optional[str] = None,
 ) -> str:
     """Check if a medication is covered by a patient's insurance plan.
 
     Returns coverage status, formulary tier, copay amount, prior authorization
     requirements, quantity limits, and generic alternatives if available.
+
+    If no medication_name is provided, checks coverage for ALL of the patient's
+    current medications from their medical record.
 
     Use this tool when the user asks about:
     - Whether a medication is covered by insurance
@@ -52,10 +55,12 @@ async def insurance_coverage_check(
     - Generic alternatives to a brand-name drug
     - Formulary tier for a medication
     - Insurance coverage for a prescription
+    - General insurance/coverage overview for a patient
 
     Args:
         patient_identifier: Patient name (e.g., "John Smith") or patient UUID.
-        medication_name: Name of the medication to check (e.g., "Metformin", "Lipitor").
+        medication_name: Optional. Name of the medication to check (e.g., "Metformin", "Lipitor").
+            If omitted, checks all of the patient's current medications.
     """
     try:
         # Step 1: Find the patient
@@ -79,6 +84,12 @@ async def insurance_coverage_check(
 
         plan_id = plan["id"]
         plan_name = plan["plan_name"]
+
+        # If no medication specified, check all of the patient's current meds
+        if not medication_name:
+            return await _check_all_medications(
+                patient_identifier, patient_id, pid, plan_id, plan_name
+            )
 
         logger.info("Insurance coverage check for %s on plan %s, drug: %s",
                     patient_identifier, plan_name, medication_name)
@@ -130,6 +141,104 @@ async def insurance_coverage_check(
     except Exception as e:
         logger.exception("Insurance coverage check failed")
         return f"Error checking insurance coverage: {str(e)}"
+
+
+async def _check_all_medications(
+    patient_name: str,
+    fhir_patient_id: str,
+    pid: Optional[int],
+    plan_id: int,
+    plan_name: str,
+) -> str:
+    """Check coverage for all of a patient's current medications."""
+    from app.fhir_client import fhir_client
+
+    # Fetch the patient's active medications from FHIR
+    med_requests = await fhir_client.search(
+        "MedicationRequest", {"patient": fhir_patient_id, "status": "active"}
+    )
+
+    if not med_requests:
+        return (
+            f"=== INSURANCE COVERAGE OVERVIEW ===\n"
+            f"Patient: {patient_name}\n"
+            f"Insurance Plan: {plan_name}\n\n"
+            f"No active medications found for this patient."
+        )
+
+    # Extract medication names from FHIR MedicationRequest resources
+    med_names = []
+    for mr in med_requests:
+        med_coding = mr.get("medicationCodeableConcept", {})
+        name = med_coding.get("text", "")
+        if not name:
+            codings = med_coding.get("coding", [])
+            if codings:
+                name = codings[0].get("display", "")
+        if name:
+            # Strip dosage info for cleaner matching (e.g., "Metformin 500 MG" -> "Metformin")
+            base_name = name.split()[0] if name else ""
+            med_names.append((name, base_name))
+
+    if not med_names:
+        return (
+            f"=== INSURANCE COVERAGE OVERVIEW ===\n"
+            f"Patient: {patient_name}\n"
+            f"Insurance Plan: {plan_name}\n\n"
+            f"Could not parse medication names from records."
+        )
+
+    lines = [
+        f"=== INSURANCE COVERAGE OVERVIEW ===",
+        f"Patient: {patient_name}",
+        f"Insurance Plan: {plan_name}",
+        f"Medications Checked: {len(med_names)}",
+        "",
+    ]
+
+    covered_count = 0
+    for full_name, base_name in med_names:
+        formulary_item = await fetch_one(
+            """
+            SELECT * FROM formulary_items
+            WHERE plan_id = %s AND LOWER(drug_name) LIKE %s
+            LIMIT 1
+            """,
+            (plan_id, f"%{base_name.lower()}%"),
+        )
+
+        if formulary_item:
+            covered_count += 1
+            tier = formulary_item["tier"]
+            tier_label = TIER_LABELS.get(tier, f"Tier {tier}")
+            copay = formulary_item.get("copay_amount")
+            copay_str = f"${copay:.2f}" if copay is not None else "N/A"
+            pa = " | PA Required" if formulary_item.get("prior_auth_required") else ""
+            generic = ""
+            if formulary_item.get("generic_alternative"):
+                generic = f" | Generic: {formulary_item['generic_alternative']}"
+            lines.append(f"  ✓ {full_name}")
+            lines.append(f"    {tier_label} — Copay: {copay_str}{pa}{generic}")
+        else:
+            lines.append(f"  ✗ {full_name}")
+            lines.append(f"    NOT COVERED — Ask provider about alternatives")
+
+        # Log the check
+        if pid:
+            result_status = "covered" if formulary_item else "not_covered"
+            await execute(
+                """
+                INSERT INTO coverage_checks (patient_pid, plan_id, drug_name, result, details)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (pid, plan_id, base_name, result_status,
+                 f"Tier {formulary_item['tier']}" if formulary_item else "Not on formulary"),
+            )
+
+    lines.append("")
+    lines.append(f"--- SUMMARY: {covered_count}/{len(med_names)} medications covered ---")
+
+    return "\n".join(lines)
 
 
 async def _get_patient_pid(fhir_patient_id: str) -> Optional[int]:

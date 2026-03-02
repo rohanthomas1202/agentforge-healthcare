@@ -94,6 +94,8 @@ with patient_identifier="John Smith", screening_name="Colorectal Cancer Screenin
 action="completed".
 - "What screenings is Sarah Johnson overdue for?" → call care_gap_analysis to see her \
 personalized screening recommendations based on age and sex.
+- "Check John Smith's insurance coverage" → call insurance_coverage_check with \
+patient_identifier="John Smith" (no medication_name) to check coverage for ALL current meds.
 - "Is Metformin covered by John Smith's insurance?" → call insurance_coverage_check with \
 patient_identifier="John Smith", medication_name="Metformin" to check formulary coverage.
 - "What's the copay for Warfarin?" → call insurance_coverage_check to check tier and copay.
