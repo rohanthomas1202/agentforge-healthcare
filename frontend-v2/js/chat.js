@@ -218,11 +218,14 @@ async function handleSendWithText(text) {
           metadata = data;
           streamDone = true;
 
-          // If the typewriter has already caught up, render now
           if (displayedText.length >= fullText.length) {
+            // Typewriter already caught up — render final markdown now
             finishRender();
+          } else {
+            // Drain stopped during tool execution pause — restart it
+            // so the post-tool response text gets displayed
+            startDrain();
           }
-          // Otherwise drainQueue will call finishRender when it catches up
 
           // Collapse tool status into summary
           collapseToolStatus(toolStatusEl, data.tool_calls);
