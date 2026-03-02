@@ -28,6 +28,8 @@ if "conversation_id" not in st.session_state:
     st.session_state.conversation_id = None
 if "streaming" not in st.session_state:
     st.session_state.streaming = False
+if "streaming_msg_idx" not in st.session_state:
+    st.session_state.streaming_msg_idx = None
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 
@@ -423,6 +425,11 @@ st.markdown(
 for idx, msg in enumerate(st.session_state.messages):
     # Skip empty assistant placeholders from interrupted streams
     if msg["role"] == "assistant" and not msg.get("content"):
+        continue
+
+    # Skip messages being actively streamed (rendered by send_and_display)
+    if (st.session_state.streaming_msg_idx is not None
+            and idx >= st.session_state.streaming_msg_idx - 1):
         continue
 
     with st.chat_message(msg["role"]):
