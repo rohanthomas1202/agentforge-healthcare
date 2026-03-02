@@ -37,6 +37,8 @@ DRUG_NAME_ALIASES: dict[str, str] = {
     "lasix": "furosemide",
     "lanoxin": "digoxin",
     "cordarone": "amiodarone",
+    "cardizem": "diltiazem",
+    "tiazac": "diltiazem",
     # Diabetes
     "glucophage": "metformin",
     "januvia": "sitagliptin",
@@ -193,6 +195,24 @@ INTERACTIONS: dict[frozenset, dict] = {
         "description": "Amiodarone increases digoxin levels — risk of toxicity",
         "mechanism": "Amiodarone inhibits P-glycoprotein and reduces renal clearance of digoxin, increasing serum levels by 70-100%.",
         "recommendation": "Reduce digoxin dose by 50% when starting amiodarone. Monitor digoxin levels and watch for toxicity (nausea, visual changes, arrhythmias).",
+    },
+    frozenset({"metoprolol", "diltiazem"}): {
+        "severity": "high",
+        "description": "Severe bradycardia and AV block — potentially life-threatening",
+        "mechanism": "Both drugs depress AV nodal conduction and reduce heart rate. Beta-blocker plus non-dihydropyridine calcium channel blocker causes additive suppression of cardiac conduction.",
+        "recommendation": "AVOID combination unless under close cardiology supervision with continuous monitoring. Risk of complete heart block, severe hypotension, and cardiac arrest.",
+    },
+    frozenset({"diltiazem", "digoxin"}): {
+        "severity": "high",
+        "description": "Diltiazem increases digoxin levels by 20-40% — risk of toxicity",
+        "mechanism": "Diltiazem inhibits P-glycoprotein-mediated renal and intestinal clearance of digoxin. Both also have additive effects on AV nodal conduction.",
+        "recommendation": "Reduce digoxin dose and monitor serum digoxin levels closely. Watch for signs of toxicity (nausea, visual disturbances, arrhythmias).",
+    },
+    frozenset({"metoprolol", "digoxin"}): {
+        "severity": "moderate",
+        "description": "Additive bradycardia and AV conduction slowing",
+        "mechanism": "Both drugs slow heart rate — beta-blockers via sympathetic blockade, digoxin via vagal enhancement. Combined effect may cause excessive bradycardia.",
+        "recommendation": "Monitor heart rate regularly. Hold either drug if heart rate drops below 60 bpm. Watch for dizziness and fatigue.",
     },
     frozenset({"simvastatin", "clarithromycin"}): {
         "severity": "contraindicated",
