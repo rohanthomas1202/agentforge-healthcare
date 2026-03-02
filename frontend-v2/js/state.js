@@ -99,3 +99,36 @@ export function persistConversation() {
 export function restoreConversation() {
   return sessionStorage.getItem('af_conversation_id');
 }
+
+/**
+ * Save verification metadata for a conversation in localStorage.
+ * Appends to existing array (one entry per assistant message).
+ */
+export function saveVerificationMeta(conversationId, meta) {
+  if (!conversationId || !meta) return;
+  const key = `af_meta_${conversationId}`;
+  try {
+    const existing = JSON.parse(localStorage.getItem(key) || '[]');
+    existing.push(meta);
+    localStorage.setItem(key, JSON.stringify(existing));
+  } catch { /* ignore storage errors */ }
+}
+
+/**
+ * Load cached verification metadata for a conversation.
+ * Returns array of meta objects (one per assistant message, in order).
+ */
+export function loadVerificationMeta(conversationId) {
+  if (!conversationId) return [];
+  try {
+    return JSON.parse(localStorage.getItem(`af_meta_${conversationId}`) || '[]');
+  } catch { return []; }
+}
+
+/**
+ * Clear cached verification metadata for a conversation.
+ */
+export function clearVerificationMeta(conversationId) {
+  if (!conversationId) return;
+  localStorage.removeItem(`af_meta_${conversationId}`);
+}

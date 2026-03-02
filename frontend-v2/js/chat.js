@@ -2,7 +2,7 @@
    CHAT — Message rendering, SSE streaming, input handling
    ═══════════════════════════════════════════════════════════ */
 
-import { getState, setState, pushMessage, updateLastMessage, persistConversation } from './state.js';
+import { getState, setState, pushMessage, updateLastMessage, persistConversation, saveVerificationMeta, loadVerificationMeta } from './state.js';
 import * as api from './api.js';
 import { renderMarkdown, escapeHtml } from './utils.js';
 import { renderVerification, renderFeedback } from './verification.js';
@@ -119,6 +119,8 @@ async function handleSendWithText(text) {
   let fullText = '';
   let conversationId = getState().conversationId;
   let metadata = null;
+  let renderPending = false;
+  let dotsRemoved = false;
 
   try {
     await api.streamMessage(text, conversationId, {
@@ -133,14 +135,25 @@ async function handleSendWithText(text) {
 
       onToolCall: (data) => {
         removeStreamingDots(contentEl);
+        dotsRemoved = true;
         addToolStatus(toolStatusEl, data.tool);
       },
 
       onToken: (data) => {
-        removeStreamingDots(contentEl);
+        if (!dotsRemoved) {
+          removeStreamingDots(contentEl);
+          dotsRemoved = true;
+        }
         fullText += data.text;
-        contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
-        scrollToBottom();
+        // Throttle rendering to ~20fps to avoid blocking the main thread
+        if (!renderPending) {
+          renderPending = true;
+          requestAnimationFrame(() => {
+            contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
+            scrollToBottom();
+            renderPending = false;
+          });
+        }
       },
 
       onDone: (data) => {
@@ -186,6 +199,7 @@ async function handleSendWithText(text) {
 
   // Render verification + feedback
   if (metadata) {
+    saveVerificationMeta(conversationId, metadata);
     const metaContainer = assistantEl.querySelector('.message-meta-area');
     if (metaContainer) {
       renderVerification(metaContainer, metadata);
@@ -208,17 +222,24 @@ function renderAllMessages() {
   messagesContainer.innerHTML = '';
 
   const { messages, conversationId } = getState();
+  const cachedMeta = loadVerificationMeta(conversationId);
+  let assistantIndex = 0;
+
   for (const msg of messages) {
     if (!msg.content) continue;
     const el = appendMessageToDOM(msg, false);
 
-    // Render verification for assistant messages with metadata
-    if (msg.role === 'assistant' && msg.meta) {
-      const metaContainer = el.querySelector('.message-meta-area');
-      if (metaContainer) {
-        renderVerification(metaContainer, msg.meta);
-        renderFeedback(metaContainer, conversationId);
+    // Render verification for assistant messages
+    if (msg.role === 'assistant') {
+      const meta = msg.meta || cachedMeta[assistantIndex] || null;
+      if (meta) {
+        const metaContainer = el.querySelector('.message-meta-area');
+        if (metaContainer) {
+          renderVerification(metaContainer, meta);
+          renderFeedback(metaContainer, conversationId);
+        }
       }
+      assistantIndex++;
     }
   }
   scrollToBottom();
