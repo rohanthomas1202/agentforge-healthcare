@@ -201,8 +201,8 @@ async def _search_by_specialty_db(specialty: str) -> list[dict]:
         return []
 
     try:
-        from app.openemr_db import get_db_pool
-        pool = await get_db_pool()
+        from app.openemr_db import get_pool
+        pool = await get_pool()
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
                 # Search users table where specialty matches (case-insensitive)
