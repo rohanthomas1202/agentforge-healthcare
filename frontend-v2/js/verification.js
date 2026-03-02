@@ -58,8 +58,9 @@ export function renderVerification(container, meta) {
 
     html.push(`
       <button class="verification-toggle" data-panel="${panelId}">
-        <span>Verification details</span>
-        ${icons.chevronDown}
+        <span class="toggle-icon">${icons.shield}</span>
+        <span>Verification Details</span>
+        <svg class="toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
       </button>
       <div class="verification-panel" id="${panelId}">
         <div class="verification-panel-inner">
@@ -72,10 +73,10 @@ export function renderVerification(container, meta) {
       const ds = v.drug_safety;
       const passed = ds.passed !== false;
       html.push(`
-        <div class="verification-section">
-          <div class="verification-section-title">Drug Safety</div>
+        <div class="verification-section${!passed ? ' has-flags' : ''}" data-section="drug-safety">
+          <div class="verification-section-title">${icons.shieldCheck}<span>Drug Safety</span></div>
           <div class="verification-item">
-            <span>${passed ? '&#x2705;' : '&#x274C;'}</span>
+            <span>${passed ? icons.check : icons.alertTriangle}</span>
             <span>${passed ? 'No critical interactions detected' : 'Issues flagged'}</span>
           </div>
       `);
@@ -83,7 +84,7 @@ export function renderVerification(container, meta) {
         for (const fi of ds.flags) {
           html.push(`
             <div class="verification-item" style="padding-left: var(--space-5)">
-              <span style="color: var(--confidence-mid)">&#x26A0;</span>
+              <span style="color: var(--confidence-mid)">${icons.alertTriangle}</span>
               <span><strong>${escapeHtml(fi.severity || 'Warning')}</strong>: ${escapeHtml(fi.reason || fi.description || fi.message || JSON.stringify(fi))}</span>
             </div>
           `);
@@ -97,10 +98,10 @@ export function renderVerification(container, meta) {
       const as = v.allergy_safety;
       const passed = as.passed !== false;
       html.push(`
-        <div class="verification-section">
-          <div class="verification-section-title">Allergy Safety</div>
+        <div class="verification-section${!passed ? ' has-flags' : ''}" data-section="allergy-safety">
+          <div class="verification-section-title">${icons.heartPulse}<span>Allergy Safety</span></div>
           <div class="verification-item">
-            <span>${passed ? '&#x2705;' : '&#x274C;'}</span>
+            <span>${passed ? icons.check : icons.alertTriangle}</span>
             <span>${passed ? 'No allergy conflicts detected' : 'Allergy conflicts flagged'}</span>
           </div>
       `);
@@ -108,7 +109,7 @@ export function renderVerification(container, meta) {
         for (const fi of as.flags) {
           html.push(`
             <div class="verification-item" style="padding-left: var(--space-5)">
-              <span style="color: var(--confidence-low)">&#x26A0;</span>
+              <span style="color: var(--confidence-low)">${icons.alertTriangle}</span>
               <span><strong>${escapeHtml(fi.severity || 'Warning')}</strong>: ${escapeHtml(fi.reason || fi.description || fi.message || JSON.stringify(fi))}</span>
             </div>
           `);
@@ -122,8 +123,8 @@ export function renderVerification(container, meta) {
       const cs = v.confidence_scoring;
       const factors = cs.factors || cs; // factors nested under .factors
       html.push(`
-        <div class="verification-section">
-          <div class="verification-section-title">Confidence Factors</div>
+        <div class="verification-section" data-section="confidence">
+          <div class="verification-section-title">${icons.gauge}<span>Confidence Factors</span></div>
           <div class="confidence-factors">
       `);
 
@@ -138,11 +139,12 @@ export function renderVerification(container, meta) {
         const val = factors[f.key];
         if (val != null) {
           const pct = Math.round(val * 100);
+          const level = pct >= 70 ? 'high' : pct >= 40 ? 'mid' : 'low';
           html.push(`
             <div class="confidence-factor">
               <div class="factor-label">${f.label}</div>
-              <div class="factor-bar"><div class="factor-fill" style="width: ${pct}%"></div></div>
-              <div class="factor-value">${pct}%</div>
+              <div class="factor-bar"><div class="factor-fill level-${level}" data-width="${pct}"></div></div>
+              <div class="factor-value level-${level}">${pct}%</div>
             </div>
           `);
         }
@@ -155,30 +157,37 @@ export function renderVerification(container, meta) {
     if (v.claim_verification) {
       const cv = v.claim_verification;
       html.push(`
-        <div class="verification-section">
-          <div class="verification-section-title">Claim Verification</div>
+        <div class="verification-section" data-section="claims">
+          <div class="verification-section-title">${icons.fileCheck}<span>Claim Verification</span></div>
       `);
 
       if (cv.grounding_rate != null) {
         const rate = Math.round(cv.grounding_rate * 100);
         const grounded = cv.grounded_claims ?? '?';
         const total = cv.total_claims ?? '?';
+        const level = rate >= 70 ? 'high' : rate >= 40 ? 'mid' : 'low';
         html.push(`
-          <div class="verification-item">
-            <span>&#x1F4CA;</span>
-            <span>Claims grounded: <strong>${grounded}/${total}</strong> (${rate}%)</span>
+          <div class="grounding-rate">
+            <div class="grounding-rate-bar">
+              <div class="grounding-rate-fill level-${level}" data-width="${rate}" style="width: 0"></div>
+            </div>
+            <div class="grounding-rate-label level-${level}">${grounded}/${total} (${rate}%)</div>
           </div>
         `);
       }
 
       if (cv.details?.length > 0) {
         for (const claim of cv.details) {
-          const icon = claim.grounded ? '&#x2705;' : '&#x274C;';
-          const source = claim.source_tool ? ` <span class="caption">[${escapeHtml(claim.source_tool)}]</span>` : '';
+          const isGrounded = claim.grounded;
+          const iconSvg = isGrounded ? icons.check : icons.alertTriangle;
+          const stateClass = isGrounded ? 'grounded' : 'ungrounded';
+          const source = claim.source_tool
+            ? ` <span class="claim-source">[${escapeHtml(claim.source_tool)}]</span>`
+            : '';
           html.push(`
-            <div class="verification-item" style="padding-left: var(--space-5)">
-              <span>${icon}</span>
-              <span>${escapeHtml(claim.claim || claim.text || '')}${source}</span>
+            <div class="claim-item ${stateClass}">
+              <span class="claim-icon ${stateClass}">${iconSvg}</span>
+              <span class="claim-text">${escapeHtml(claim.claim || claim.text || '')}${source}</span>
             </div>
           `);
         }
@@ -191,8 +200,8 @@ export function renderVerification(container, meta) {
     const isSafe = meta.verification.overall_safe !== false;
     html.push(`
       <div class="safety-status ${isSafe ? 'safe' : 'review'}">
-        <span>${isSafe ? '&#x2705;' : '&#x26A0;'}</span>
-        <span>${isSafe ? 'Safe' : 'Review needed'}</span>
+        <span class="safety-dot"></span>
+        <span>${isSafe ? 'Verified Safe' : 'Review Needed'}</span>
       </div>
     `);
 
@@ -211,8 +220,25 @@ export function renderVerification(container, meta) {
       const panel = document.getElementById(panelId);
       if (!panel) return;
 
+      const isExpanding = !toggleBtn.classList.contains('expanded');
       toggleBtn.classList.toggle('expanded');
       panel.classList.toggle('expanded');
+
+      if (isExpanding) {
+        // Animate bars from 0 to their target width
+        requestAnimationFrame(() => {
+          const fills = panel.querySelectorAll('.factor-fill[data-width]');
+          fills.forEach((fill, i) => {
+            fill.style.transitionDelay = `${i * 80}ms`;
+            fill.style.width = `${fill.dataset.width}%`;
+          });
+          const groundingFill = panel.querySelector('.grounding-rate-fill[data-width]');
+          if (groundingFill) {
+            groundingFill.style.transitionDelay = '200ms';
+            groundingFill.style.width = `${groundingFill.dataset.width}%`;
+          }
+        });
+      }
     });
   }
 }

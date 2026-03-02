@@ -638,27 +638,40 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) 0;
-  font-size: 0.78rem;
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
   color: var(--text-secondary);
   cursor: pointer;
-  transition: color var(--duration-fast) ease;
-  background: none;
-  border: none;
-  margin-top: var(--space-2);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-pill);
+  margin-top: var(--space-3);
+  transition: color var(--duration-fast) ease,
+              background var(--duration-fast) ease,
+              border-color var(--duration-fast) ease;
 }
 
 .verification-toggle:hover {
   color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.06);
+  border-color: var(--text-muted);
 }
 
 .verification-toggle svg {
   width: 14px;
   height: 14px;
-  transition: transform var(--duration-normal) ease;
+  transition: transform var(--duration-normal) var(--ease-out-expo);
 }
 
-.verification-toggle.expanded svg {
+.verification-toggle .toggle-icon {
+  opacity: 0.6;
+}
+
+.verification-toggle.expanded svg.toggle-chevron {
   transform: rotate(180deg);
 }
 
@@ -669,7 +682,7 @@
 }
 
 .verification-panel.expanded {
-  max-height: 600px;
+  max-height: 800px;
 }
 
 .verification-panel-inner {
@@ -680,19 +693,55 @@
 }
 
 .verification-section {
-  padding: var(--space-3) var(--space-4);
-  background: rgba(0, 0, 0, 0.02);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--text-muted);
   border-radius: var(--radius-sm);
+  transition: border-left-color var(--duration-normal) ease;
+}
+
+.verification-section[data-section="drug-safety"] {
+  border-left-color: var(--confidence-high);
+}
+
+.verification-section[data-section="allergy-safety"] {
+  border-left-color: var(--confidence-high);
+}
+
+.verification-section[data-section="drug-safety"].has-flags {
+  border-left-color: var(--confidence-low);
+}
+
+.verification-section[data-section="allergy-safety"].has-flags {
+  border-left-color: var(--confidence-low);
+}
+
+.verification-section[data-section="confidence"] {
+  border-left-color: var(--accent-blue);
+}
+
+.verification-section[data-section="claims"] {
+  border-left-color: var(--confidence-mid);
 }
 
 .verification-section-title {
-  font-family: var(--font-body);
+  font-family: var(--font-display);
   font-weight: var(--fw-bold);
   font-size: 0.75rem;
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
   color: var(--text-secondary);
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.verification-section-title svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
 }
 
 .verification-item {
@@ -702,6 +751,12 @@
   padding: var(--space-1) 0;
   font-size: 0.8rem;
   color: var(--text-primary);
+}
+
+.verification-item > span:first-child svg {
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
 }
 
 .confidence-factors {
@@ -721,7 +776,7 @@
 }
 
 .confidence-factor .factor-bar {
-  height: 4px;
+  height: 6px;
   background: var(--border-light);
   border-radius: var(--radius-pill);
   overflow: hidden;
@@ -730,16 +785,30 @@
 
 .confidence-factor .factor-fill {
   height: 100%;
-  background: var(--text-primary);
   border-radius: var(--radius-pill);
+  width: 0;
   transition: width var(--duration-slow) var(--ease-out-expo);
 }
+
+.factor-fill.level-high,
+.grounding-rate-fill.level-high { background: var(--confidence-high); }
+.factor-fill.level-mid,
+.grounding-rate-fill.level-mid { background: var(--confidence-mid); }
+.factor-fill.level-low,
+.grounding-rate-fill.level-low { background: var(--confidence-low); }
 
 .confidence-factor .factor-value {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: var(--fw-bold);
 }
+
+.factor-value.level-high,
+.grounding-rate-label.level-high { color: var(--confidence-high); }
+.factor-value.level-mid,
+.grounding-rate-label.level-mid { color: var(--confidence-mid); }
+.factor-value.level-low,
+.grounding-rate-label.level-low { color: var(--confidence-low); }
 
 /* ── FEEDBACK BUTTONS ────────────────────────────────────── */
 .feedback-row {
@@ -790,15 +859,103 @@
   height: 16px;
 }
 
+/* ── CLAIM VERIFICATION ──────────────────────────────────── */
+.grounding-rate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.grounding-rate-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border-light);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.grounding-rate-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-slow) var(--ease-out-expo);
+}
+
+.grounding-rate-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: var(--fw-bold);
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.claim-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  margin-top: var(--space-1);
+}
+
+.claim-item.grounded {
+  background: var(--confidence-high-bg);
+}
+
+.claim-item.ungrounded {
+  background: var(--confidence-mid-bg);
+}
+
+.claim-icon {
+  min-width: 16px;
+  margin-top: 2px;
+}
+
+.claim-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.claim-icon.grounded {
+  color: var(--confidence-high);
+}
+
+.claim-icon.ungrounded {
+  color: var(--confidence-mid);
+}
+
+.claim-text {
+  flex: 1;
+  color: var(--text-primary);
+}
+
+.claim-source {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
 /* ── SAFETY STATUS ───────────────────────────────────────── */
 .safety-status {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-sm);
-  font-size: 0.8rem;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-size: 0.7rem;
   font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  align-self: flex-end;
+}
+
+.safety-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .safety-status.safe {
@@ -806,9 +963,19 @@
   color: var(--confidence-high);
 }
 
+.safety-status.safe .safety-dot {
+  background: var(--confidence-high);
+  box-shadow: 0 0 4px var(--confidence-high);
+}
+
 .safety-status.review {
   background: var(--confidence-mid-bg);
   color: var(--confidence-mid);
+}
+
+.safety-status.review .safety-dot {
+  background: var(--confidence-mid);
+  box-shadow: 0 0 4px var(--confidence-mid);
 }
 
 /* ── SIDEBAR FOOTER DISCLAIMER ───────────────────────────── */
@@ -986,9 +1153,36 @@ body,
   color: #0e0e0e;
 }
 
-/* Verification section bg */
+/* Verification section bg + borders */
 [data-theme="dark"] .verification-section {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Verification toggle */
+[data-theme="dark"] .verification-toggle {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="dark"] .verification-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Claim items */
+[data-theme="dark"] .claim-item.grounded {
+  background: rgba(61, 171, 100, 0.1);
+}
+
+[data-theme="dark"] .claim-item.ungrounded {
+  background: rgba(224, 149, 42, 0.1);
+}
+
+/* Progress bars */
+[data-theme="dark"] .confidence-factor .factor-bar,
+[data-theme="dark"] .grounding-rate-bar {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 /* Feedback button hover */
