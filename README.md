@@ -1,6 +1,6 @@
 # AgentForge Healthcare
 
-An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/), the open-source Electronic Health Records system. Uses a LangGraph agent with 14 specialized tools to query real patient data via FHIR R4 APIs and custom MariaDB tables, with a 3-layer verification pipeline to ensure safe, grounded responses.
+An AI-powered healthcare assistant built on [OpenEMR](https://www.open-emr.org/), the open-source Electronic Health Records system. Uses a LangGraph agent with 14 specialized tools to query real patient data via FHIR R4 APIs and custom MariaDB tables, with a 6-layer verification pipeline, input sanitization, and an EHR abstraction layer to ensure safe, grounded responses.
 
 **Live Demo:** [http://54.236.183.203](http://54.236.183.203/)
 
@@ -45,10 +45,13 @@ User (Streamlit Chat UI)
    +--- OpenEMR FHIR R4 API ---+--- Custom MariaDB Tables ---+
         (OAuth2 authenticated)     (care gaps, insurance, labs)
         |
-   Verification Pipeline
+   Verification Pipeline (6 layers)
    ├── Drug Safety (contradiction detection)
+   ├── Allergy Safety (cross-reactivity checks)
    ├── Confidence Scoring (0.0-1.0)
-   └── Claim Verification (hallucination detection)
+   ├── Claim Verification (hallucination detection)
+   ├── PHI Detection (SSN, phone, email, address)
+   └── Dosage Limit Checker (FDA max daily doses)
         |
    Response + metadata → User
 ```
@@ -81,15 +84,24 @@ User (Streamlit Chat UI)
 | `insurance_coverage_check` | Formulary tier, copay, prior auth, generic alternatives |
 | `lab_results_analysis` | Lab trends, reference ranges, critical value flagging |
 
-## Verification Systems
+## Safety & Verification
 
-1. **Drug Safety Verifier** -- Scans the agent's response and tool outputs for dangerous drug combinations. Flags contradictions where the agent recommends medications that interact.
+### Input Sanitization
+All 14 tools pass inputs through centralized sanitizers (`app/agent/input_sanitizer.py`) — defense-in-depth against prompt injection, SQL injection, and malformed inputs.
 
-2. **Confidence Scorer** -- Assigns a 0.0-1.0 confidence score based on: number of tools called, data completeness, response specificity, and whether claims are grounded in tool outputs.
+### Verification Pipeline (6 Layers)
 
-3. **Claim Verifier** -- Extracts factual claims from the response and checks each one against the raw tool outputs. Calculates a grounding rate and flags ungrounded (hallucinated) claims.
+1. **Drug Safety Verifier** — Flags dangerous drug combinations and contradictions in the agent's response.
+2. **Allergy Safety Verifier** — Checks if recommended drugs conflict with the patient's documented allergies, including cross-reactivity.
+3. **Confidence Scorer** — 0.0-1.0 score based on tool usage, data completeness, response specificity, and grounding.
+4. **Claim Verifier** — Extracts factual claims and checks each one is grounded in raw tool outputs (hallucination detection).
+5. **PHI Detector** — Scans responses for Protected Health Information (SSN, phone, email, address, MRN, DOB). SSN blocks the response; others warn.
+6. **Dosage Limit Checker** — Flags dosage mentions exceeding FDA maximum recommended daily doses for 28 common medications.
 
-All three run via `run_verification_pipeline()` on every response before it reaches the user.
+All six run via `run_verification_pipeline()` on every response. Each is wrapped in try/except with safe defaults — a single verifier crash never blocks the response.
+
+### EHR Abstraction Layer
+Both `FHIRClient` and `MockFHIRClient` inherit from `BaseEHRProvider` ABC — making the system portable to Epic, Cerner, or other EHR backends without changing tool code.
 
 ## Tech Stack
 
@@ -109,12 +121,14 @@ agentforge-healthcare/
 ├── app/
 │   ├── main.py                  # FastAPI entry point
 │   ├── config.py                # Settings from env vars
+│   ├── ehr_provider.py           # BaseEHRProvider ABC (EHR abstraction layer)
 │   ├── fhir_client.py           # FHIR client with OAuth2 token management
 │   ├── mock_fhir_client.py      # Mock client for deployed demo
 │   ├── mock_data.py             # 10 synthetic patients (FHIR format)
 │   ├── agent/
 │   │   ├── graph.py             # LangGraph state machine
-│   │   └── state.py             # Agent state definition
+│   │   ├── state.py             # Agent state definition
+│   │   └── input_sanitizer.py   # Centralized input sanitization
 │   ├── api/
 │   │   └── routes.py            # /api/health, /api/chat endpoints
 │   ├── openemr_db.py              # Async MariaDB connection pool
@@ -137,10 +151,13 @@ agentforge-healthcare/
 │   │   ├── symptom_conditions_db.py  # 18 symptoms, 70+ conditions
 │   │   └── fhir_helpers.py           # FHIR resource parsers
 │   └── verification/
-│       ├── pipeline.py          # Orchestrator
+│       ├── pipeline.py          # Orchestrator (6-layer pipeline)
 │       ├── drug_safety.py       # Drug interaction contradiction detection
+│       ├── allergy_safety.py    # Allergy-drug cross-reactivity checks
 │       ├── confidence.py        # 0.0-1.0 confidence scoring
-│       └── claim_verifier.py    # Hallucination detection via grounding
+│       ├── claim_verifier.py    # Hallucination detection via grounding
+│       ├── phi_detector.py      # PHI pattern detection (SSN, phone, email)
+│       └── dosage_checker.py    # FDA max daily dose verification
 ├── frontend/
 │   ├── app.py                   # Streamlit chat UI
 │   └── api_client.py            # HTTP client for backend

@@ -190,21 +190,36 @@ All tables live in the same OpenEMR MariaDB database and are accessed via an asy
 | **UPDATE** | Mark screenings completed/declined (with next-due calculation), update care gap status, update formulary tiers | MariaDB |
 | **DELETE/RESET** | Reset care gaps to "due" status, remove discontinued formulary drugs | MariaDB |
 
-## Verification Pipeline (4 Layers)
+## Safety Architecture
 
-Every agent response passes through a 4-layer deterministic verification pipeline before reaching the user:
+### Input Sanitization Layer
 
-### Layer 1: Drug Safety Verifier
+All 14 tool functions pass inputs through centralized sanitizers (`app/agent/input_sanitizer.py`) before processing — defense-in-depth against prompt injection, SQL injection, and malformed inputs:
+
+- **Patient names**: Strips non-alphabetic chars, caps 200 chars
+- **Drug names**: Removes dosage suffixes, Lucene query injection chars
+- **Free text**: Strips 12+ prompt injection patterns (SYSTEM:, ignore instructions, etc.)
+- **Lists**: Caps at 50 items, sanitizes each entry
+
+### EHR Abstraction Layer
+
+Both `FHIRClient` and `MockFHIRClient` inherit from `BaseEHRProvider` ABC (`app/ehr_provider.py`), defining a portable interface for EHR data access. Swapping to Epic or Cerner requires implementing one class — no tool code changes needed.
+
+### Verification Pipeline (6 Layers)
+
+Every agent response passes through a 6-layer deterministic verification pipeline before reaching the user:
+
+#### Layer 1: Drug Safety Verifier
 - Cross-checks the LLM's response against a local database of ~50 drug interaction pairs
 - **Contradiction detection**: Flags if the response says drugs are "safe together" when the DB shows they interact
 - **Missing check detection**: Flags if 2+ drugs are mentioned but the interaction tool was never called
 
-### Layer 2: Allergy Safety Verifier
+#### Layer 2: Allergy Safety Verifier
 - Extracts documented allergies from tool outputs (patient_summary, allergy_check)
 - Checks if the LLM recommends drugs from a conflicting drug class without proper warning
 - Uses the 15-entry allergy-drug class map with cross-reactivity awareness
 
-### Layer 3: Confidence Scorer
+#### Layer 3: Confidence Scorer
 - Computes a deterministic 0.0-1.0 score based on 4 weighted factors:
   - Tool usage (30%) — Were tools called and did they return data?
   - Data richness (30%) — Did tool outputs contain substantive content?
@@ -212,17 +227,30 @@ Every agent response passes through a 4-layer deterministic verification pipelin
   - Error rate (20%) — Fraction of tool calls without errors
 - Scores below 0.3 trigger a LOW CONFIDENCE warning
 
-### Layer 4: Claim Verifier (Hallucination Detection)
+#### Layer 4: Claim Verifier (Hallucination Detection)
 - Extracts factual claims from the response using 8 regex patterns (conditions, medications, allergies, vitals, demographics)
 - Checks each claim is "grounded" in tool output (≥60% of key terms must appear in at least one tool's output)
 - Flags ungrounded claims as potential hallucinations
 
+#### Layer 5: PHI Detection
+- Scans agent responses for Protected Health Information patterns
+- **Critical** (blocks response): SSN (`###-##-####`)
+- **High** (strong warning): Medical Record Number references
+- **Moderate** (informational): Phone numbers, email addresses, street addresses, labeled DOB
+- Matched values are partially redacted in logs
+
+#### Layer 6: Dosage Limit Checker
+- Extracts dosage mentions from responses (e.g., "5000 mg of acetaminophen")
+- Checks against FDA maximum recommended daily doses for 28 common medications
+- Flags dosages exceeding FDA limits (e.g., 5000 mg acetaminophen → max 4000 mg/day)
+
 **Overall Safety Formula:**
 ```
-overall_safe = drug_safety.passed AND allergy_safety.passed AND confidence >= 0.3 AND claims.passed
+overall_safe = drug_safety.passed AND allergy_safety.passed AND confidence >= 0.3
+               AND claims.passed AND phi_detection.passed AND dosage_check.passed
 ```
 
-All 4 verifiers are deterministic (no LLM calls), fault-tolerant (each wrapped in try/except with safe defaults), and run on every response. Verification results are displayed in the frontend's verification panel with color-coded badges.
+All 6 verifiers are deterministic (no LLM calls), fault-tolerant (each wrapped in try/except with safe defaults), and run on every response. Verification results are displayed in the frontend's verification panel with color-coded badges.
 
 ## Observability
 
@@ -295,4 +323,6 @@ Each test case validates: correct tool selection (`expected_tools`), response co
 - **Cost reduction**: Replaces enterprise CDS subscriptions ($3K+/yr Lexicomp, $50K+/yr Epic CDS) with an AI assistant at ~$0.012/query (~$1.04/user/month)
 - **Chronic disease management**: Trend analysis on lab results helps PCPs proactively manage diabetes (HbA1c trends), CKD (eGFR decline), and heart failure (BNP levels)
 - **Audit trail**: Creates documentation for drug safety reviews, coverage checks, and screening compliance — critical for malpractice defense and regulatory audits
-- **4-layer verification**: Every response is independently verified for drug safety, allergy conflicts, confidence, and hallucination grounding — reducing risk of AI-caused harm in clinical settings
+- **6-layer verification**: Every response is independently verified for drug safety, allergy conflicts, confidence, hallucination grounding, PHI leakage, and dosage limits — reducing risk of AI-caused harm in clinical settings
+- **Input sanitization**: Centralized defense-in-depth against prompt injection, SQL injection, and malformed inputs across all 14 tools
+- **EHR portability**: Abstract `BaseEHRProvider` interface makes the system portable to Epic, Cerner, or other EHR backends without changing tool code

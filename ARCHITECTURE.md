@@ -114,17 +114,35 @@ The agent uses a **LangGraph state machine** with a simple but effective loop:
 - **Data Source:** Custom MariaDB tables (`patient_lab_results`, `lab_reference_ranges`)
 - **Output:** Lab values with normal/abnormal/critical flags, trend detection (improving/worsening/stable), clinical significance notes, result history for flagged tests
 
-## 4. Verification Pipeline
+## 4. Safety & Verification
 
-Every agent response passes through three verification systems before reaching the user:
+### 4.1 Input Sanitization Layer
 
-### 4.1 Drug Safety Verifier
+All 14 tool functions pass their inputs through centralized sanitizers (`app/agent/input_sanitizer.py`) before processing:
+
+- **`sanitize_patient_name`** — Strips non-alphabetic characters (keeps spaces, hyphens, periods, apostrophes), caps at 200 chars
+- **`sanitize_drug_name`** — Removes dosage suffixes (e.g., "500mg"), strips Lucene query injection characters
+- **`sanitize_free_text`** — Strips 12+ prompt injection patterns (SYSTEM:, ignore instructions, etc.), caps at 2000 chars
+- **`sanitize_medication_list`** / **`sanitize_symptom_list`** — Caps at 50 items, sanitizes each entry
+
+This is defense-in-depth — tools also have their own per-field sanitization where needed.
+
+### 4.2 Verification Pipeline (6 Layers)
+
+Every agent response passes through six verification systems before reaching the user:
+
+#### Layer 1: Drug Safety Verifier
 - Scans the response for medication names
 - Cross-references against the drug interaction database
 - Flags if the agent recommends a drug combination that has known interactions
 - **Trigger:** Any response mentioning 2+ medications
 
-### 4.2 Confidence Scorer
+#### Layer 2: Allergy Safety Verifier
+- Extracts documented allergies from tool outputs (patient_summary, allergy_check)
+- Checks if the LLM recommends drugs from a conflicting drug class without warning
+- Uses 15-entry allergy-drug class map with cross-reactivity awareness
+
+#### Layer 3: Confidence Scorer
 - Assigns a score from 0.0 to 1.0 based on:
   - Number of tools called (more tools = more data = higher confidence)
   - Data completeness (did tools return actual results or empty sets?)
@@ -132,15 +150,28 @@ Every agent response passes through three verification systems before reaching t
   - Grounding ratio (what percentage of claims map to tool outputs?)
 - **Threshold:** Score below 0.3 triggers a low-confidence warning
 
-### 4.3 Claim Verifier (Hallucination Detection)
+#### Layer 4: Claim Verifier (Hallucination Detection)
 - Extracts factual claims from the response using pattern matching
 - Checks each claim against raw tool output text
 - Calculates a grounding rate (grounded claims / total claims)
 - **Output:** List of grounded vs. ungrounded claims with details
 - **Threshold:** Grounding rate below 50% flags the response
 
+#### Layer 5: PHI Detection
+- Scans the agent's response for Protected Health Information patterns:
+  - SSN (`###-##-####`) — severity: critical → blocks response
+  - MRN references — severity: high → strong warning
+  - Phone numbers, email addresses, street addresses, labeled DOB — severity: moderate → informational warning
+- Matched values are partially redacted in logs for safe auditing
+
+#### Layer 6: Dosage Limit Checker
+- Extracts dosage mentions from the response (e.g., "5000 mg of acetaminophen")
+- Compares against a built-in table of FDA maximum recommended daily doses for 28 common medications
+- Flags any mentioned dosage that exceeds the FDA max
+- **Example:** "5000 mg acetaminophen" → flagged (max 4000 mg/day)
+
 ### Pipeline Orchestration
-All three verifiers run synchronously via `run_verification_pipeline()`. Results are merged into a single metadata block attached to every response:
+All six verifiers run synchronously via `run_verification_pipeline()`. Each is wrapped in try/except with safe defaults so a single verifier crash never blocks the response. Results are merged into a single metadata block:
 
 ```json
 {
@@ -148,12 +179,31 @@ All three verifiers run synchronously via `run_verification_pipeline()`. Results
   "disclaimers": ["Consult a healthcare provider..."],
   "verification": {
     "drug_safety": {"passed": true, "flags": []},
+    "allergy_safety": {"passed": true, "flags": []},
     "confidence_scoring": {"score": 0.82, "factors": {...}},
     "claim_verification": {"passed": true, "grounding_rate": 0.91},
+    "phi_detection": {"passed": true, "flags": []},
+    "dosage_check": {"passed": true, "flags": []},
     "overall_safe": true
   }
 }
 ```
+
+### 4.3 EHR Abstraction Layer
+
+Both `FHIRClient` and `MockFHIRClient` inherit from `BaseEHRProvider` (`app/ehr_provider.py`), an abstract base class defining the EHR data access interface:
+
+```python
+class BaseEHRProvider(ABC):
+    async def get(path, params) -> dict
+    async def search(resource_type, params) -> list[dict]
+    async def get_resource(resource_type, resource_id) -> dict
+    async def post(path, json_body) -> dict
+    async def create_resource(resource_type, resource) -> dict
+    async def close() -> None
+```
+
+This makes the system portable — swapping to Epic, Cerner, or another EHR backend requires implementing a single class without changing any tool code.
 
 ## 5. Evaluation Framework
 
@@ -228,5 +278,8 @@ OpenEMR runs alongside the agent on the same Lightsail instance, connected via D
 | Local drug/symptom databases over external APIs | Faster, more reliable, no additional API costs or rate limits |
 | Verification as post-processing (not in-loop) | Keeps the agent loop simple; verification catches issues before user sees them |
 | Mock data layer as drop-in replacement | Same interface as real FHIR client; enables deployment without OpenEMR dependency |
+| BaseEHRProvider ABC for EHR abstraction | Tools depend on interface, not implementation — portable to Epic/Cerner without changing tool code |
+| Centralized input sanitization + per-tool sanitization | Defense-in-depth: centralized module handles common patterns, per-tool sanitizers handle domain-specific logic |
+| PHI detection as post-processing (not blocking by default) | Only SSN (critical) blocks; phone/email/address warn — avoids false positives on legitimate patient data display |
 | Docker Compose on Lightsail | Co-locates OpenEMR + agent on one instance; Docker internal DNS for secure FHIR communication |
 | Temperature 0 for LLM | Medical context demands consistency and reproducibility over creativity |
