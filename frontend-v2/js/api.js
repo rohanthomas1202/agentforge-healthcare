@@ -92,8 +92,9 @@ export async function streamMessage(message, conversationId, callbacks = {}) {
       }
 
       // Yield to the browser event loop periodically so rAF/rendering can run.
-      // Every 20 chunks keeps the UI responsive without adding visible pauses.
-      if (++yieldCounter % 20 === 0) {
+      // Every 50 chunks is sufficient since the typewriter queue in chat.js
+      // absorbs bursts — we just need the event loop to fire rAF occasionally.
+      if (++yieldCounter % 50 === 0) {
         await new Promise(r => setTimeout(r, 0));
       }
     }

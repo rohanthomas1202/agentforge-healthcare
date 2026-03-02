@@ -121,14 +121,66 @@ async function handleSendWithText(text) {
   let metadata = null;
   let dotsRemoved = false;
 
-  // Smooth streaming state:
-  // During streaming, we append to a raw text node (instant, no HTML parsing).
-  // Periodically we flush to markdown so formatting appears progressively.
-  // On done, we do one final full markdown render.
-  let streamTextNode = null;  // The text node we append to
-  let mdFlushTimer = null;    // Periodic markdown flush interval
-  const MD_FLUSH_MS = 400;    // Flush markdown formatting every 400ms
-  let needsScroll = false;    // Coalesce scroll calls
+  // ── Typewriter animation state ──
+  // Tokens arrive in bursts from the network. Instead of rendering them
+  // all at once (choppy), we queue them and drain at a steady rate via
+  // requestAnimationFrame — like a typewriter that never stutters.
+  let displayedText = '';     // What's currently shown on screen
+  let streamTextNode = null;  // The <span> we write into
+  let animFrameId = null;     // rAF handle for the drain loop
+  let mdFlushTimer = null;    // Periodic markdown formatting flush
+  const MD_FLUSH_MS = 800;    // Flush markdown every 800ms
+  const CHARS_PER_FRAME = 3;  // ~180 chars/sec at 60fps — fast but smooth
+  let streamDone = false;     // Set true when SSE stream ends
+
+  function ensureStreamNode() {
+    if (!streamTextNode) {
+      contentEl.textContent = '';
+      const rawSpan = document.createElement('span');
+      rawSpan.className = 'streaming-raw';
+      contentEl.appendChild(rawSpan);
+      streamTextNode = rawSpan;
+      const cursor = document.createElement('span');
+      cursor.className = 'streaming-cursor';
+      contentEl.appendChild(cursor);
+    }
+  }
+
+  function drainQueue() {
+    const remaining = fullText.length - displayedText.length;
+    if (remaining <= 0) {
+      animFrameId = null;
+      // If the stream is done and we've caught up, do the final markdown render
+      if (streamDone) finishRender();
+      return;
+    }
+
+    // Speed up if the queue is getting long (catch up without stalling)
+    const burst = remaining > 60 ? Math.ceil(remaining / 8) :
+                  remaining > 20 ? CHARS_PER_FRAME * 2 :
+                  CHARS_PER_FRAME;
+    displayedText = fullText.slice(0, displayedText.length + burst);
+
+    ensureStreamNode();
+    streamTextNode.textContent = displayedText;
+    scrollToBottom();
+
+    animFrameId = requestAnimationFrame(drainQueue);
+  }
+
+  function startDrain() {
+    if (!animFrameId) {
+      animFrameId = requestAnimationFrame(drainQueue);
+    }
+  }
+
+  function finishRender() {
+    if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
+    if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+    streamTextNode = null;
+    contentEl.innerHTML = renderMarkdown(fullText);
+    scrollToBottom();
+  }
 
   try {
     try {
@@ -155,34 +207,16 @@ async function handleSendWithText(text) {
           }
           fullText += data.text;
 
-          // Fast path: append to a raw text node (no HTML parsing, no regex)
-          if (!streamTextNode) {
-            contentEl.textContent = '';
-            const rawSpan = document.createElement('span');
-            rawSpan.className = 'streaming-raw';
-            contentEl.appendChild(rawSpan);
-            streamTextNode = rawSpan;
-            const cursor = document.createElement('span');
-            cursor.className = 'streaming-cursor';
-            contentEl.appendChild(cursor);
-          }
-          streamTextNode.textContent = fullText;
-
-          // Coalesce scrolls into one rAF per frame
-          if (!needsScroll) {
-            needsScroll = true;
-            requestAnimationFrame(() => {
-              scrollToBottom();
-              needsScroll = false;
-            });
-          }
+          // Kick the typewriter drain loop (no-op if already running)
+          startDrain();
 
           // Start periodic markdown flush so formatting appears progressively
           if (!mdFlushTimer) {
             mdFlushTimer = setInterval(() => {
               if (!contentEl) return;
-              contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
-              streamTextNode = null; // Will be recreated on next token
+              // Flush only what's been displayed so far
+              contentEl.innerHTML = renderMarkdown(displayedText) + '<span class="streaming-cursor"></span>';
+              streamTextNode = null; // Will be recreated by drainQueue
               scrollToBottom();
             }, MD_FLUSH_MS);
           }
@@ -191,12 +225,13 @@ async function handleSendWithText(text) {
         onDone: (data) => {
           fullText = data.response || fullText;
           metadata = data;
+          streamDone = true;
 
-          // Stop flush timer before final render
-          if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
-          streamTextNode = null;
-
-          contentEl.innerHTML = renderMarkdown(fullText);
+          // If the typewriter has already caught up, render now
+          if (displayedText.length >= fullText.length) {
+            finishRender();
+          }
+          // Otherwise drainQueue will call finishRender when it catches up
 
           // Collapse tool status into summary
           collapseToolStatus(toolStatusEl, data.tool_calls);
@@ -204,12 +239,14 @@ async function handleSendWithText(text) {
 
         onError: (data) => {
           if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
+          if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
           contentEl.innerHTML = `<p style="color: var(--confidence-low)">Error: ${escapeHtml(data.message)}</p>`;
         },
       });
     } catch {
       // Clean up streaming state before fallback
       if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
+      if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
       streamTextNode = null;
 
       // Fallback to non-streaming
@@ -251,6 +288,7 @@ async function handleSendWithText(text) {
   } finally {
     // Always clean up — even if DOM updates above throw
     if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
+    if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
     setState({ isStreaming: false, streamingText: '', streamingToolCalls: [] });
     updateSendButton();
   }
