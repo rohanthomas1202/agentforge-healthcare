@@ -12,61 +12,178 @@ export function escapeHtml(str) {
 }
 
 /**
- * Simple markdown to HTML converter.
- * Handles: bold, italic, code blocks, inline code, links, lists, paragraphs, headings.
+ * Markdown to HTML converter.
+ * Handles: tables, hr, blockquotes, bold, italic, code blocks,
+ * inline code, links, lists, headings, paragraphs.
  */
 export function renderMarkdown(text) {
   if (!text) return '';
 
-  let html = escapeHtml(text);
+  // Process block-level elements first (before escaping)
+  const lines = text.split('\n');
+  const blocks = [];
+  let i = 0;
 
-  // Code blocks (``` ... ```)
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    return `<pre><code class="${lang}">${code.trim()}</code></pre>`;
-  });
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Code blocks (``` ... ```)
+    if (line.trim().startsWith('```')) {
+      const lang = line.trim().slice(3);
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].trim().startsWith('```')) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      blocks.push(`<pre><code class="${escapeHtml(lang)}">${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+      continue;
+    }
+
+    // Tables (detect | at start)
+    if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+      const tableLines = [];
+      while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+        tableLines.push(lines[i]);
+        i++;
+      }
+      blocks.push(renderTable(tableLines));
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^---+$|^\*\*\*+$|^___+$/.test(line.trim())) {
+      blocks.push('<hr>');
+      i++;
+      continue;
+    }
+
+    // Blockquote
+    if (line.trim().startsWith('> ')) {
+      const quoteLines = [];
+      while (i < lines.length && lines[i].trim().startsWith('> ')) {
+        quoteLines.push(lines[i].replace(/^>\s?/, ''));
+        i++;
+      }
+      blocks.push(`<blockquote>${renderInline(quoteLines.join('\n'))}</blockquote>`);
+      continue;
+    }
+
+    // Headings
+    const h4 = line.match(/^#### (.+)$/);
+    if (h4) { blocks.push(`<h5>${renderInline(h4[1])}</h5>`); i++; continue; }
+    const h3 = line.match(/^### (.+)$/);
+    if (h3) { blocks.push(`<h4>${renderInline(h3[1])}</h4>`); i++; continue; }
+    const h2 = line.match(/^## (.+)$/);
+    if (h2) { blocks.push(`<h3>${renderInline(h2[1])}</h3>`); i++; continue; }
+    const h1 = line.match(/^# (.+)$/);
+    if (h1) { blocks.push(`<h2>${renderInline(h1[1])}</h2>`); i++; continue; }
+
+    // Ordered list
+    if (/^\d+\.\s/.test(line.trim())) {
+      const listItems = [];
+      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
+        listItems.push(lines[i].replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      blocks.push('<ol>' + listItems.map(li => `<li>${renderInline(li)}</li>`).join('') + '</ol>');
+      continue;
+    }
+
+    // Unordered list
+    if (/^[-*]\s/.test(line.trim())) {
+      const listItems = [];
+      while (i < lines.length && /^[-*]\s/.test(lines[i].trim())) {
+        listItems.push(lines[i].replace(/^[-*]\s/, ''));
+        i++;
+      }
+      blocks.push('<ul>' + listItems.map(li => `<li>${renderInline(li)}</li>`).join('') + '</ul>');
+      continue;
+    }
+
+    // Empty line = paragraph break
+    if (line.trim() === '') {
+      i++;
+      continue;
+    }
+
+    // Regular paragraph — collect consecutive non-empty lines
+    const paraLines = [];
+    while (i < lines.length && lines[i].trim() !== '' &&
+           !lines[i].trim().startsWith('#') && !lines[i].trim().startsWith('|') &&
+           !lines[i].trim().startsWith('```') && !lines[i].trim().startsWith('> ') &&
+           !/^[-*]\s/.test(lines[i].trim()) && !/^\d+\.\s/.test(lines[i].trim()) &&
+           !/^---+$|^\*\*\*+$|^___+$/.test(lines[i].trim())) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    if (paraLines.length > 0) {
+      blocks.push(`<p>${renderInline(paraLines.join('<br>'))}</p>`);
+    }
+  }
+
+  return blocks.join('\n');
+}
+
+/**
+ * Render inline markdown (bold, italic, code, links).
+ */
+function renderInline(text) {
+  let html = escapeHtml(text);
 
   // Inline code
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-  // Bold (**text** or __text__)
+  // Bold
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
 
-  // Italic (*text* or _text_)
+  // Italic
   html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  html = html.replace(/(?<!_)_([^_]+)_(?!_)/g, '<em>$1</em>');
 
-  // Headers (## Heading)
-  html = html.replace(/^### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^## (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^# (.+)$/gm, '<h2>$1</h2>');
-
-  // Unordered lists
-  html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
-  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
-
-  // Ordered lists
-  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
-
-  // Links [text](url)
+  // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
 
-  // Paragraphs (double newlines)
-  html = html.replace(/\n\n+/g, '</p><p>');
-  html = `<p>${html}</p>`;
+  // Preserve <br> that was already inserted
+  html = html.replace(/&lt;br&gt;/g, '<br>');
 
-  // Clean up empty paragraphs
-  html = html.replace(/<p>\s*<\/p>/g, '');
-  html = html.replace(/<p>(<h[2-4]>)/g, '$1');
-  html = html.replace(/(<\/h[2-4]>)<\/p>/g, '$1');
-  html = html.replace(/<p>(<pre>)/g, '$1');
-  html = html.replace(/(<\/pre>)<\/p>/g, '$1');
-  html = html.replace(/<p>(<ul>)/g, '$1');
-  html = html.replace(/(<\/ul>)<\/p>/g, '$1');
+  return html;
+}
 
-  // Single line breaks → <br>
-  html = html.replace(/\n/g, '<br>');
+/**
+ * Render a markdown table to HTML.
+ */
+function renderTable(lines) {
+  if (lines.length < 2) return lines.map(l => `<p>${escapeHtml(l)}</p>`).join('');
 
+  const parseRow = (line) =>
+    line.split('|').slice(1, -1).map(cell => cell.trim());
+
+  const headerCells = parseRow(lines[0]);
+
+  // Find separator row (contains ---)
+  let dataStart = 1;
+  if (lines.length > 1 && /^[\s|:-]+$/.test(lines[1])) {
+    dataStart = 2;
+  }
+
+  let html = '<div class="table-wrapper"><table><thead><tr>';
+  for (const cell of headerCells) {
+    html += `<th>${renderInline(cell)}</th>`;
+  }
+  html += '</tr></thead><tbody>';
+
+  for (let r = dataStart; r < lines.length; r++) {
+    const cells = parseRow(lines[r]);
+    html += '<tr>';
+    for (const cell of cells) {
+      html += `<td>${renderInline(cell)}</td>`;
+    }
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
   return html;
 }
 
