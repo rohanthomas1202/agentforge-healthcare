@@ -119,10 +119,16 @@ async function handleSendWithText(text) {
   let fullText = '';
   let conversationId = getState().conversationId;
   let metadata = null;
-  let renderPending = false;
   let dotsRemoved = false;
-  let lastRenderTime = 0;
-  const RENDER_INTERVAL = 80; // ms — max ~12fps during streaming
+
+  // Smooth streaming state:
+  // During streaming, we append to a raw text node (instant, no HTML parsing).
+  // Periodically we flush to markdown so formatting appears progressively.
+  // On done, we do one final full markdown render.
+  let streamTextNode = null;  // The text node we append to
+  let mdFlushTimer = null;    // Periodic markdown flush interval
+  const MD_FLUSH_MS = 400;    // Flush markdown formatting every 400ms
+  let needsScroll = false;    // Coalesce scroll calls
 
   try {
     try {
@@ -148,23 +154,48 @@ async function handleSendWithText(text) {
             dotsRemoved = true;
           }
           fullText += data.text;
-          // Throttle rendering to ~12fps to avoid blocking the main thread
-          const now = performance.now();
-          if (!renderPending && now - lastRenderTime > RENDER_INTERVAL) {
-            renderPending = true;
+
+          // Fast path: append to a raw text node (no HTML parsing, no regex)
+          if (!streamTextNode) {
+            contentEl.textContent = '';
+            const rawSpan = document.createElement('span');
+            rawSpan.className = 'streaming-raw';
+            contentEl.appendChild(rawSpan);
+            streamTextNode = rawSpan;
+            const cursor = document.createElement('span');
+            cursor.className = 'streaming-cursor';
+            contentEl.appendChild(cursor);
+          }
+          streamTextNode.textContent = fullText;
+
+          // Coalesce scrolls into one rAF per frame
+          if (!needsScroll) {
+            needsScroll = true;
             requestAnimationFrame(() => {
-              if (!contentEl) { renderPending = false; return; }
-              contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
               scrollToBottom();
-              renderPending = false;
-              lastRenderTime = performance.now();
+              needsScroll = false;
             });
+          }
+
+          // Start periodic markdown flush so formatting appears progressively
+          if (!mdFlushTimer) {
+            mdFlushTimer = setInterval(() => {
+              if (!contentEl) return;
+              contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
+              streamTextNode = null; // Will be recreated on next token
+              scrollToBottom();
+            }, MD_FLUSH_MS);
           }
         },
 
         onDone: (data) => {
           fullText = data.response || fullText;
           metadata = data;
+
+          // Stop flush timer before final render
+          if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
+          streamTextNode = null;
+
           contentEl.innerHTML = renderMarkdown(fullText);
 
           // Collapse tool status into summary
@@ -172,10 +203,15 @@ async function handleSendWithText(text) {
         },
 
         onError: (data) => {
+          if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
           contentEl.innerHTML = `<p style="color: var(--confidence-low)">Error: ${escapeHtml(data.message)}</p>`;
         },
       });
     } catch {
+      // Clean up streaming state before fallback
+      if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
+      streamTextNode = null;
+
       // Fallback to non-streaming
       try {
         const response = await api.sendMessage(text, conversationId);
@@ -213,7 +249,8 @@ async function handleSendWithText(text) {
       }
     }
   } finally {
-    // Always reset streaming state — even if DOM updates above throw
+    // Always clean up — even if DOM updates above throw
+    if (mdFlushTimer) { clearInterval(mdFlushTimer); mdFlushTimer = null; }
     setState({ isStreaming: false, streamingText: '', streamingToolCalls: [] });
     updateSendButton();
   }

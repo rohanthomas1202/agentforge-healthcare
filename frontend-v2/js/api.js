@@ -91,8 +91,9 @@ export async function streamMessage(message, conversationId, callbacks = {}) {
         }
       }
 
-      // Yield to the browser event loop periodically so rAF/rendering can run
-      if (++yieldCounter % 5 === 0) {
+      // Yield to the browser event loop periodically so rAF/rendering can run.
+      // Every 20 chunks keeps the UI responsive without adding visible pauses.
+      if (++yieldCounter % 20 === 0) {
         await new Promise(r => setTimeout(r, 0));
       }
     }
