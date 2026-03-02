@@ -4,6 +4,8 @@ Single entry point that runs drug safety, confidence scoring, and
 claim verification against the agent's response before returning to the user.
 """
 
+from __future__ import annotations
+
 import logging
 
 from langchain_core.messages import ToolMessage
@@ -11,13 +13,17 @@ from langchain_core.messages import ToolMessage
 from app.verification.allergy_safety import AllergySafetyVerifier
 from app.verification.claim_verifier import ClaimVerifier
 from app.verification.confidence import ConfidenceScorer
+from app.verification.dosage_checker import DosageChecker
 from app.verification.drug_safety import DrugSafetyVerifier
+from app.verification.phi_detector import PHIDetector
 
 logger = logging.getLogger(__name__)
 
 # Safe defaults when a verifier crashes
 _SAFE_DRUG_RESULT = {"passed": True, "flags": [], "disclaimers": []}
 _SAFE_ALLERGY_RESULT = {"passed": True, "flags": [], "disclaimers": []}
+_SAFE_PHI_RESULT = {"passed": True, "flags": [], "disclaimers": []}
+_SAFE_DOSAGE_RESULT = {"passed": True, "flags": [], "disclaimers": []}
 _SAFE_CONFIDENCE_RESULT = {"score": 0.5, "factors": [], "disclaimers": []}
 _SAFE_CLAIM_RESULT = {
     "passed": True,
@@ -110,9 +116,24 @@ def run_verification_pipeline(
         logger.exception("ClaimVerifier crashed — using safe default")
         claim_result = _SAFE_CLAIM_RESULT
 
+    try:
+        phi_result = PHIDetector().detect(response_text)
+    except Exception:
+        logger.exception("PHIDetector crashed — using safe default")
+        phi_result = _SAFE_PHI_RESULT
+
+    try:
+        dosage_result = DosageChecker().check(response_text)
+    except Exception:
+        logger.exception("DosageChecker crashed — using safe default")
+        dosage_result = _SAFE_DOSAGE_RESULT
+
     # Merge disclaimers from all verifiers
     disclaimers: list[str] = []
-    for verifier_result in [drug_result, allergy_result, confidence_result, claim_result]:
+    for verifier_result in [
+        drug_result, allergy_result, confidence_result,
+        claim_result, phi_result, dosage_result,
+    ]:
         for d in verifier_result.get("disclaimers", []):
             if d not in disclaimers:
                 disclaimers.append(d)
@@ -123,6 +144,8 @@ def run_verification_pipeline(
         and allergy_result["passed"]
         and confidence_result["score"] >= 0.3
         and claim_result["passed"]
+        and phi_result["passed"]
+        and dosage_result["passed"]
     )
 
     return {
@@ -148,6 +171,14 @@ def run_verification_pipeline(
                 "total_claims": claim_result["total_claims"],
                 "grounding_rate": claim_result["grounding_rate"],
                 "details": claim_result["details"],
+            },
+            "phi_detection": {
+                "passed": phi_result["passed"],
+                "flags": phi_result["flags"],
+            },
+            "dosage_check": {
+                "passed": dosage_result["passed"],
+                "flags": dosage_result["flags"],
             },
             "overall_safe": overall_safe,
         },

@@ -17,11 +17,12 @@ import httpx
 import logging
 
 from app.config import settings
+from app.ehr_provider import BaseEHRProvider
 
 logger = logging.getLogger(__name__)
 
 
-class FHIRClient:
+class FHIRClient(BaseEHRProvider):
     """HTTP client for OpenEMR's FHIR R4 API with automatic OAuth2 auth."""
 
     def __init__(self):

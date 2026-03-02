@@ -21,6 +21,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_drug_name, sanitize_patient_name
 from app.openemr_db import execute, fetch_all, fetch_one
 from app.tools.fhir_helpers import find_patient
 
@@ -63,6 +64,10 @@ async def insurance_coverage_check(
             If omitted, checks all of the patient's current medications.
     """
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+        if medication_name:
+            medication_name = sanitize_drug_name(medication_name)
+
         # Step 1: Find the patient
         patient = await find_patient(patient_identifier)
         if not patient:

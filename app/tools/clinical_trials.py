@@ -12,6 +12,7 @@ from typing import Optional
 import httpx
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_free_text, sanitize_patient_name
 from app.tools.fhir_helpers import (
     extract_patient_name,
     find_patient,
@@ -56,6 +57,12 @@ async def clinical_trials_search(
         location: Optional location to filter trials by (e.g., "Austin, TX", "Texas").
     """
     try:
+        condition = sanitize_free_text(condition)
+        if patient_identifier:
+            patient_identifier = sanitize_patient_name(patient_identifier)
+        if location:
+            location = sanitize_free_text(location)
+
         # If patient provided, get their conditions and search for each
         if patient_identifier:
             return await _patient_trials_search(

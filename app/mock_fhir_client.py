@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
+from app.ehr_provider import BaseEHRProvider
 from app.mock_data import (
     ALLERGIES,
     APPOINTMENTS,
@@ -22,7 +23,7 @@ from app.mock_data import (
 )
 
 
-class MockFHIRClient:
+class MockFHIRClient(BaseEHRProvider):
     """In-memory FHIR client backed by static mock data."""
 
     def __init__(self):

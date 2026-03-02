@@ -9,6 +9,7 @@ from typing import List, Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_patient_name
 from app.fhir_client import fhir_client
 from app.tools.fhir_helpers import (
     extract_allergy,
@@ -34,6 +35,10 @@ async def patient_summary(patient_identifier: str) -> str:
         patient_identifier: Patient name (e.g., "John Smith") or patient UUID to look up.
     """
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+        if not patient_identifier:
+            return "Invalid patient identifier. Please provide a valid name or UUID."
+
         # Step 1: Find the patient (search by name or get by ID)
         patient = await _find_patient(patient_identifier)
         if not patient:

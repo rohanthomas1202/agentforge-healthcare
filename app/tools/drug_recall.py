@@ -12,6 +12,7 @@ from typing import Optional
 import httpx
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_drug_name, sanitize_patient_name
 from app.tools.fhir_helpers import (
     extract_patient_name,
     find_patient,
@@ -56,7 +57,10 @@ async def drug_recall_check(
             the patient's current medications for active recalls.
     """
     try:
+        if drug_name:
+            drug_name = sanitize_drug_name(drug_name)
         if patient_identifier:
+            patient_identifier = sanitize_patient_name(patient_identifier)
             return await _patient_recall_check(patient_identifier, drug_name)
 
         if not drug_name:

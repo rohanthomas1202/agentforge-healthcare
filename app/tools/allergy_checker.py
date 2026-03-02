@@ -11,6 +11,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_medication_list, sanitize_patient_name
 from app.tools.fhir_helpers import (
     extract_patient_name,
     find_patient,
@@ -335,6 +336,10 @@ async def allergy_check(
             checks the patient's current medications against their allergies.
     """
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+        if medications:
+            medications = sanitize_medication_list(medications)
+
         patient = await find_patient(patient_identifier)
         if not patient:
             return (

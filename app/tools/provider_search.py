@@ -8,6 +8,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_free_text, sanitize_patient_name
 from app.fhir_client import fhir_client
 from app.tools.fhir_helpers import extract_practitioner, extract_practitioner_role
 import logging
@@ -79,6 +80,10 @@ async def provider_search(
         specialty: Medical specialty to search for (e.g., "cardiology", "family practice", "dermatology").
     """
     try:
+        if name:
+            name = sanitize_patient_name(name)
+        if specialty:
+            specialty = sanitize_free_text(specialty)
         if not name and not specialty:
             return "Please provide a provider name or specialty to search for."
 

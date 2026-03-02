@@ -8,6 +8,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_free_text, sanitize_patient_name
 from app.fhir_client import fhir_client, standard_api_client
 import logging
 
@@ -49,6 +50,10 @@ async def record_vitals(
         notes: Optional clinical notes about the vitals reading.
     """
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+        if notes:
+            notes = sanitize_free_text(notes)
+
         # Validate at least one measurement provided
         measurements = {
             "systolic_bp": systolic_bp,

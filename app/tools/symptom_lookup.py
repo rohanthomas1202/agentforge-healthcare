@@ -8,6 +8,7 @@ from typing import List
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_symptom_list
 from app.tools.symptom_conditions_db import lookup_symptoms
 import logging
 
@@ -29,6 +30,7 @@ async def symptom_lookup(symptoms: List[str]) -> str:
         symptoms: List of symptoms the patient is experiencing (e.g., ["chest pain", "shortness of breath", "fatigue"]).
     """
     try:
+        symptoms = sanitize_symptom_list(symptoms)
         if not symptoms:
             return "No symptoms provided. Please describe the symptoms you'd like to look up."
 

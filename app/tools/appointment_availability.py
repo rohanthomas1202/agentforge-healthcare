@@ -9,6 +9,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_patient_name
 from app.fhir_client import fhir_client
 from app.tools.fhir_helpers import extract_appointment, extract_practitioner
 import logging
@@ -41,6 +42,11 @@ async def appointment_availability(
         patient_name: Optional patient name to look up their existing appointments instead.
     """
     try:
+        if provider_name:
+            provider_name = sanitize_patient_name(provider_name)
+        if patient_name:
+            patient_name = sanitize_patient_name(patient_name)
+
         # Default to today
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")

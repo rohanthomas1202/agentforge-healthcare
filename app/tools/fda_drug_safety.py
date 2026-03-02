@@ -14,6 +14,7 @@ from typing import Optional
 import httpx
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_drug_name, sanitize_patient_name
 from app.fhir_client import fhir_client
 from app.tools.fhir_helpers import extract_medication_request
 from app.tools.retry_utils import RetryableHTTPError, api_retry
@@ -50,6 +51,10 @@ async def fda_drug_safety(
             report as a clinical note in the patient's OpenEMR record.
     """
     try:
+        drug_name = sanitize_drug_name(drug_name)
+        if patient_identifier:
+            patient_identifier = sanitize_patient_name(patient_identifier)
+
         # Step 1: Fetch FDA label data
         label_data = await _fetch_fda_label(drug_name)
 

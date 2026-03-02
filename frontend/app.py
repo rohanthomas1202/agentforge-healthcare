@@ -225,6 +225,29 @@ def render_metadata(metadata: dict, show_verification: bool) -> None:
                     source = f" — *{detail['source_tool']}*" if detail.get("source_tool") else ""
                     st.markdown(f"  {icon} {detail['claim']}{source}")
 
+            # PHI detection
+            phi = verification.get("phi_detection", {})
+            if phi and phi.get("flags"):
+                icon = "✅" if phi.get("passed") else "❌"
+                st.markdown(f"**PHI Detection:** {icon}")
+                for flag in phi.get("flags", []):
+                    severity = flag.get("severity", "").upper()
+                    if severity == "CRITICAL":
+                        st.error(f"**{severity}**: {flag['description']} ({flag['match']})")
+                    else:
+                        st.warning(f"**{severity}**: {flag['description']} ({flag['match']})")
+
+            # Dosage check
+            dosage = verification.get("dosage_check", {})
+            if dosage and dosage.get("flags"):
+                icon = "✅" if dosage.get("passed") else "❌"
+                st.markdown(f"**Dosage Check:** {icon}")
+                for flag in dosage.get("flags", []):
+                    st.error(
+                        f"**{flag['drug']}**: {flag['mentioned_mg']:.0f} mg mentioned "
+                        f"(FDA max: {flag['max_mg']:.0f} mg/day)"
+                    )
+
             # Overall safety
             overall = verification.get("overall_safe")
             if overall is not None:

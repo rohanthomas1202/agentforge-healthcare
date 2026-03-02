@@ -20,6 +20,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_free_text, sanitize_patient_name
 from app.openemr_db import fetch_all, fetch_one
 from app.tools.fhir_helpers import find_patient
 
@@ -50,6 +51,10 @@ async def lab_results_analysis(
                    "lipid", or a specific test name like "HbA1c". Leave empty for all.
     """
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+        if test_type:
+            test_type = sanitize_free_text(test_type)
+
         # Step 1: Find the patient
         patient = await find_patient(patient_identifier)
         if not patient:

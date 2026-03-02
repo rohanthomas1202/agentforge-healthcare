@@ -10,6 +10,7 @@ from typing import List, Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_medication_list, sanitize_patient_name
 from app.fhir_client import fhir_client
 from app.tools.drug_interactions_db import check_interactions, normalize_drug_name
 from app.tools.fhir_helpers import extract_medication_request
@@ -39,6 +40,10 @@ async def drug_interaction_check(
         patient_identifier: Optional patient name or ID. If provided, the patient's current medications from their medical record will also be included in the interaction check.
     """
     try:
+        medications = sanitize_medication_list(medications)
+        if patient_identifier:
+            patient_identifier = sanitize_patient_name(patient_identifier)
+
         all_medications = list(medications)  # Copy the input list
 
         # If patient provided, fetch their current medications too

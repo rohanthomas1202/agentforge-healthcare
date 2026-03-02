@@ -20,6 +20,7 @@ from typing import Optional
 
 from langchain_core.tools import tool
 
+from app.agent.input_sanitizer import sanitize_free_text, sanitize_patient_name
 from app.openemr_db import execute, execute_returning_id, fetch_all, fetch_one
 from app.tools.fhir_helpers import find_patient
 
@@ -52,6 +53,8 @@ async def care_gap_analysis(patient_identifier: str) -> str:
         patient_identifier: Patient name (e.g., "John Smith") or patient UUID.
     """
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+
         # Step 1: Find the patient
         patient = await find_patient(patient_identifier)
         if not patient:
@@ -172,6 +175,9 @@ async def update_care_gap(
         return f"Invalid action '{action}'. Must be one of: completed, declined, reset."
 
     try:
+        patient_identifier = sanitize_patient_name(patient_identifier)
+        screening_name = sanitize_free_text(screening_name)
+
         # Find patient
         patient = await find_patient(patient_identifier)
         if not patient:
