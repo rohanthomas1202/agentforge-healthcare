@@ -320,6 +320,8 @@
   color: #b6b5b5;
   text-align: left;
   cursor: pointer;
+  position: relative;
+  z-index: 1;
   transition: background var(--duration-fast) ease,
               color var(--duration-fast) ease;
 }

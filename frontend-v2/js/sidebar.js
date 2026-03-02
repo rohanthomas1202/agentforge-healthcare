@@ -114,21 +114,29 @@ function setupCollapsible(toggleId, bodyId) {
   toggle.addEventListener('click', () => {
     const isCollapsed = toggle.classList.contains('collapsed');
     if (isCollapsed) {
+      // Expand: remove collapsed, set scrollHeight, then switch to none after transition
       toggle.classList.remove('collapsed');
       body.classList.remove('collapsed');
       body.style.maxHeight = body.scrollHeight + 'px';
+      const onEnd = () => {
+        body.style.maxHeight = 'none';
+        body.removeEventListener('transitionend', onEnd);
+      };
+      body.addEventListener('transitionend', onEnd);
     } else {
-      toggle.classList.add('collapsed');
-      body.style.maxHeight = '0';
-      body.classList.add('collapsed');
+      // Collapse: set current height first so transition works, then set to 0
+      body.style.maxHeight = body.scrollHeight + 'px';
+      requestAnimationFrame(() => {
+        toggle.classList.add('collapsed');
+        body.style.maxHeight = '0';
+        body.classList.add('collapsed');
+      });
     }
   });
 
-  // Set initial max-height for open sections
+  // Open sections: use max-height none so content is never clipped
   if (!toggle.classList.contains('collapsed')) {
-    requestAnimationFrame(() => {
-      body.style.maxHeight = body.scrollHeight + 'px';
-    });
+    body.style.maxHeight = 'none';
   }
 }
 

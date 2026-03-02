@@ -11,15 +11,15 @@
   <link href="https://api.fontshare.com/v2/css?f[]=clash-display@700&f[]=satoshi@500,700&display=swap" rel="stylesheet">
 
   <!-- Styles (order matters: tokens → reset → type → layout → components → animations) -->
-  <link rel="stylesheet" href="css/tokens.css?v=4">
-  <link rel="stylesheet" href="css/reset.css?v=4">
-  <link rel="stylesheet" href="css/typography.css?v=4">
-  <link rel="stylesheet" href="css/layout.css?v=4">
-  <link rel="stylesheet" href="css/components.css?v=4">
-  <link rel="stylesheet" href="css/animations.css?v=4">
+  <link rel="stylesheet" href="css/tokens.css?v=6">
+  <link rel="stylesheet" href="css/reset.css?v=6">
+  <link rel="stylesheet" href="css/typography.css?v=6">
+  <link rel="stylesheet" href="css/layout.css?v=6">
+  <link rel="stylesheet" href="css/components.css?v=6">
+  <link rel="stylesheet" href="css/animations.css?v=6">
 
   <!-- Favicon -->
-  <link rel="icon" href="assets/favicon.svg?v=4" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.svg?v=6" type="image/svg+xml">
 </head>
 <body>
   <div class="app">
@@ -142,28 +142,29 @@
       <!-- Chat (shown when conversation is active) -->
       <section id="chat" class="chat hidden">
         <div id="messages" class="messages-container"></div>
-
-        <div class="input-bar">
-          <div class="input-wrapper">
-            <textarea
-              id="chat-input"
-              placeholder="Ask about patients, medications, symptoms, or providers..."
-              rows="1"
-              autocomplete="off"
-            ></textarea>
-          </div>
-          <button id="send-btn" class="btn-send" aria-label="Send message" disabled>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="12" y1="19" x2="12" y2="5"></line>
-              <polyline points="5 12 12 5 19 12"></polyline>
-            </svg>
-          </button>
-        </div>
       </section>
+
+      <!-- Input bar (always visible) -->
+      <div class="input-bar">
+        <div class="input-wrapper">
+          <textarea
+            id="chat-input"
+            placeholder="Ask about patients, medications, symptoms, or providers..."
+            rows="1"
+            autocomplete="off"
+          ></textarea>
+        </div>
+        <button id="send-btn" class="btn-send" aria-label="Send message" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="19" x2="12" y2="5"></line>
+            <polyline points="5 12 12 5 19 12"></polyline>
+          </svg>
+        </button>
+      </div>
     </main>
   </div>
 
   <!-- App (ES modules) -->
-  <script type="module" src="js/app.js?v=4"></script>
+  <script type="module" src="js/app.js?v=6"></script>
 </body>
 </html>
