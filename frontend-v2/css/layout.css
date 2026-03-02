@@ -95,9 +95,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--space-8);
-  background: rgba(242, 242, 242, 0.9);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  background: var(--bg-primary);
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-light);
   z-index: 50;
@@ -149,7 +147,7 @@
   overflow-y: auto;
   padding: var(--space-8) var(--space-8);
   padding-bottom: var(--space-4);
-  scroll-behavior: smooth;
+  /* scroll-behavior: smooth — disabled, causes Firefox perf issues during streaming */
 }
 
 /* ── Input bar ───────────────────────────────────────────── */
