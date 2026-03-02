@@ -212,10 +212,11 @@ export function renderVerification(container, meta) {
 
   container.innerHTML = html.join('');
 
-  // Wire up toggle
+  // Wire up toggle — use onclick assignment (not addEventListener) to avoid
+  // accumulating duplicate listeners if renderVerification is called again
   const toggleBtn = container.querySelector('.verification-toggle');
   if (toggleBtn) {
-    toggleBtn.addEventListener('click', () => {
+    toggleBtn.onclick = () => {
       const panelId = toggleBtn.dataset.panel;
       const panel = document.getElementById(panelId);
       if (!panel) return;
@@ -239,7 +240,7 @@ export function renderVerification(container, meta) {
           }
         });
       }
-    });
+    };
   }
 }
 
@@ -248,6 +249,9 @@ export function renderVerification(container, meta) {
  */
 export function renderFeedback(container, conversationId) {
   if (!container) return;
+
+  // Prevent duplicate feedback rows if called again on the same container
+  if (container.querySelector('.feedback-row')) return;
 
   const row = document.createElement('div');
   row.className = 'feedback-row';

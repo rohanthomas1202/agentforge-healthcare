@@ -46,12 +46,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   setState({ health });
   updateHealth(health);
 
-  // Periodic health check every 30s
-  setInterval(async () => {
+  // Periodic health check every 30s (store ID so it can be cleared)
+  const healthInterval = setInterval(async () => {
     const h = await checkHealth();
     setState({ health: h });
     updateHealth(h);
   }, 30000);
+
+  // Clean up interval on page unload to prevent leaked timers
+  window.addEventListener('beforeunload', () => {
+    clearInterval(healthInterval);
+  });
 
   // ── Restore session ─────────────────────────────────────
   const savedId = restoreConversation();

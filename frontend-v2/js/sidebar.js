@@ -118,11 +118,11 @@ function setupCollapsible(toggleId, bodyId) {
       toggle.classList.remove('collapsed');
       body.classList.remove('collapsed');
       body.style.maxHeight = body.scrollHeight + 'px';
-      const onEnd = () => {
+      // { once: true } auto-removes the listener after it fires once,
+      // preventing accumulation if the transition doesn't complete
+      body.addEventListener('transitionend', () => {
         body.style.maxHeight = 'none';
-        body.removeEventListener('transitionend', onEnd);
-      };
-      body.addEventListener('transitionend', onEnd);
+      }, { once: true });
     } else {
       // Collapse: set current height first so transition works, then set to 0
       body.style.maxHeight = body.scrollHeight + 'px';

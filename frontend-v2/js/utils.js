@@ -142,8 +142,9 @@ function renderInline(text) {
   html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
 
-  // Italic
-  html = html.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  // Italic — bold (**) is already replaced above, so remaining single *
+  // can be matched with a simple non-greedy pattern (no lookbehind needed)
+  html = html.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
 
   // Links
   html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');

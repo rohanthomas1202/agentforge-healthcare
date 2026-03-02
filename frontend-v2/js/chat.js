@@ -125,96 +125,100 @@ async function handleSendWithText(text) {
   const RENDER_INTERVAL = 80; // ms — max ~12fps during streaming
 
   try {
-    await api.streamMessage(text, conversationId, {
-      onThinking: (data) => {
-        if (data.conversation_id) {
-          conversationId = data.conversation_id;
-          setState({ conversationId });
-          persistConversation();
-        }
-        showStreamingDots(contentEl);
-      },
+    try {
+      await api.streamMessage(text, conversationId, {
+        onThinking: (data) => {
+          if (data.conversation_id) {
+            conversationId = data.conversation_id;
+            setState({ conversationId });
+            persistConversation();
+          }
+          showStreamingDots(contentEl);
+        },
 
-      onToolCall: (data) => {
-        removeStreamingDots(contentEl);
-        dotsRemoved = true;
-        addToolStatus(toolStatusEl, data.tool);
-      },
-
-      onToken: (data) => {
-        if (!dotsRemoved) {
+        onToolCall: (data) => {
           removeStreamingDots(contentEl);
           dotsRemoved = true;
+          addToolStatus(toolStatusEl, data.tool);
+        },
+
+        onToken: (data) => {
+          if (!dotsRemoved) {
+            removeStreamingDots(contentEl);
+            dotsRemoved = true;
+          }
+          fullText += data.text;
+          // Throttle rendering to ~12fps to avoid blocking the main thread
+          const now = performance.now();
+          if (!renderPending && now - lastRenderTime > RENDER_INTERVAL) {
+            renderPending = true;
+            requestAnimationFrame(() => {
+              if (!contentEl) { renderPending = false; return; }
+              contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
+              scrollToBottom();
+              renderPending = false;
+              lastRenderTime = performance.now();
+            });
+          }
+        },
+
+        onDone: (data) => {
+          fullText = data.response || fullText;
+          metadata = data;
+          contentEl.innerHTML = renderMarkdown(fullText);
+
+          // Collapse tool status into summary
+          collapseToolStatus(toolStatusEl, data.tool_calls);
+        },
+
+        onError: (data) => {
+          contentEl.innerHTML = `<p style="color: var(--confidence-low)">Error: ${escapeHtml(data.message)}</p>`;
+        },
+      });
+    } catch {
+      // Fallback to non-streaming
+      try {
+        const response = await api.sendMessage(text, conversationId);
+        if (response.error) {
+          contentEl.innerHTML = `<p style="color: var(--confidence-low)">Error: ${escapeHtml(response.error)}</p>`;
+        } else {
+          fullText = response.response;
+          metadata = response;
+          conversationId = response.conversation_id;
+          setState({ conversationId });
+          persistConversation();
+          contentEl.innerHTML = renderMarkdown(fullText);
         }
-        fullText += data.text;
-        // Throttle rendering to ~12fps to avoid blocking the main thread
-        const now = performance.now();
-        if (!renderPending && now - lastRenderTime > RENDER_INTERVAL) {
-          renderPending = true;
-          requestAnimationFrame(() => {
-            contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
-            scrollToBottom();
-            renderPending = false;
-            lastRenderTime = performance.now();
-          });
-        }
-      },
-
-      onDone: (data) => {
-        fullText = data.response || fullText;
-        metadata = data;
-        contentEl.innerHTML = renderMarkdown(fullText);
-
-        // Collapse tool status into summary
-        collapseToolStatus(toolStatusEl, data.tool_calls);
-      },
-
-      onError: (data) => {
-        contentEl.innerHTML = `<p style="color: var(--confidence-low)">Error: ${escapeHtml(data.message)}</p>`;
-      },
-    });
-  } catch {
-    // Fallback to non-streaming
-    try {
-      const response = await api.sendMessage(text, conversationId);
-      if (response.error) {
-        contentEl.innerHTML = `<p style="color: var(--confidence-low)">Error: ${escapeHtml(response.error)}</p>`;
-      } else {
-        fullText = response.response;
-        metadata = response;
-        conversationId = response.conversation_id;
-        setState({ conversationId });
-        persistConversation();
-        contentEl.innerHTML = renderMarkdown(fullText);
+      } catch (e) {
+        contentEl.innerHTML = `<p style="color: var(--confidence-low)">Connection error. Is the backend running?</p>`;
       }
-    } catch (e) {
-      contentEl.innerHTML = `<p style="color: var(--confidence-low)">Connection error. Is the backend running?</p>`;
     }
+
+    // Finalize
+    removeStreamingDots(contentEl);
+    const cursor = contentEl?.querySelector('.streaming-cursor');
+    if (cursor) cursor.remove();
+
+    // Save message with metadata
+    const assistantMsg = { role: 'assistant', content: fullText, meta: metadata };
+    pushMessage(assistantMsg);
+
+    // Render verification + feedback
+    if (metadata) {
+      saveVerificationMeta(conversationId, metadata);
+      const metaContainer = assistantEl?.querySelector('.message-meta-area');
+      if (metaContainer) {
+        renderVerification(metaContainer, metadata);
+        renderFeedback(metaContainer, conversationId);
+      }
+    }
+  } finally {
+    // Always reset streaming state — even if DOM updates above throw
+    setState({ isStreaming: false, streamingText: '', streamingToolCalls: [] });
+    updateSendButton();
   }
 
-  // Finalize
-  removeStreamingDots(contentEl);
-  const cursor = contentEl.querySelector('.streaming-cursor');
-  if (cursor) cursor.remove();
-
-  // Save message with metadata
-  const assistantMsg = { role: 'assistant', content: fullText, meta: metadata };
-  pushMessage(assistantMsg);
-
-  // Render verification + feedback
-  if (metadata) {
-    saveVerificationMeta(conversationId, metadata);
-    const metaContainer = assistantEl.querySelector('.message-meta-area');
-    if (metaContainer) {
-      renderVerification(metaContainer, metadata);
-      renderFeedback(metaContainer, conversationId);
-    }
-  }
-
-  setState({ isStreaming: false, streamingText: '', streamingToolCalls: [] });
-  updateSendButton();
   scrollToBottom();
-
   onStreamComplete?.();
 }
 
