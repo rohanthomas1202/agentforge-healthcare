@@ -61,6 +61,7 @@ export async function streamMessage(message, conversationId, callbacks = {}) {
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let yieldCounter = 0;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -88,6 +89,11 @@ export async function streamMessage(message, conversationId, callbacks = {}) {
         } catch {
           // Skip malformed lines
         }
+      }
+
+      // Yield to the browser event loop periodically so rAF/rendering can run
+      if (++yieldCounter % 5 === 0) {
+        await new Promise(r => setTimeout(r, 0));
       }
     }
   } catch (err) {

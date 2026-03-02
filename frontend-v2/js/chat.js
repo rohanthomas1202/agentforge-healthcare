@@ -121,6 +121,8 @@ async function handleSendWithText(text) {
   let metadata = null;
   let renderPending = false;
   let dotsRemoved = false;
+  let lastRenderTime = 0;
+  const RENDER_INTERVAL = 80; // ms — max ~12fps during streaming
 
   try {
     await api.streamMessage(text, conversationId, {
@@ -145,13 +147,15 @@ async function handleSendWithText(text) {
           dotsRemoved = true;
         }
         fullText += data.text;
-        // Throttle rendering to ~20fps to avoid blocking the main thread
-        if (!renderPending) {
+        // Throttle rendering to ~12fps to avoid blocking the main thread
+        const now = performance.now();
+        if (!renderPending && now - lastRenderTime > RENDER_INTERVAL) {
           renderPending = true;
           requestAnimationFrame(() => {
             contentEl.innerHTML = renderMarkdown(fullText) + '<span class="streaming-cursor"></span>';
             scrollToBottom();
             renderPending = false;
+            lastRenderTime = performance.now();
           });
         }
       },
