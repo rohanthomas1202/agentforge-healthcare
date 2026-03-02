@@ -940,3 +940,12 @@ Is he available on 2026-02-25?
 | "Has [drug] been recalled?" | `drug_recall_check` |
 | "Check all X meds for recalls" | `patient_summary` -> `drug_recall_check` |
 | "Complete safety review for X" | `patient_summary` -> `drug_interaction_check` -> `allergy_check` -> `drug_recall_check` -> `fda_drug_safety` |
+
+
+Get Maria Martinez's patient summary, check her preventive care gaps, show her lab results, check if Atorvastatin is covered by her insurance, record blood pressure 128/82 and heart rate 70, and mark her depression screening as completed
+
+
+Check interactions between Metoprolol, Diltiazem, and Digoxin, look up FDA safety reports and recalls for Diltiazem, and check if someone with a Penicillin allergy can take Cephalexin
+
+
+What conditions cause shortness of breath with swollen ankles? Find me a cardiologist, check Dr. Brown's availability for next week, and search for clinical trials on heart failure
