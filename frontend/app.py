@@ -265,8 +265,10 @@ def send_and_display(user_prompt: str) -> None:
     """Send a message to the backend and stream the response.
 
     Saves the assistant message to session state incrementally so that
-    if a Streamlit rerun occurs mid-stream (e.g. widget click), the
-    partial response is preserved and rendered from history.
+    if a Streamlit rerun occurs mid-stream, the partial response is
+    preserved. After streaming finishes, triggers a rerun so the
+    history loop handles the final clean render (prevents doubled
+    feedback buttons and opacity artifacts).
     """
     st.session_state.messages.append({"role": "user", "content": user_prompt})
 
@@ -279,6 +281,7 @@ def send_and_display(user_prompt: str) -> None:
         "feedback": None,
     })
     st.session_state.streaming = True
+    st.session_state.streaming_msg_idx = assistant_idx
 
     with st.chat_message("user"):
         st.markdown(user_prompt)
@@ -325,39 +328,24 @@ def send_and_display(user_prompt: str) -> None:
                         "token_usage": evt_data.get("token_usage", {}),
                         "latency_ms": evt_data.get("latency_ms"),
                     }
-                    # Save final content and metadata
                     st.session_state.messages[assistant_idx]["content"] = full_text
                     st.session_state.messages[assistant_idx]["metadata"] = final_metadata
 
                 elif evt_type == "error":
                     had_error = True
                     error_msg = evt_data.get("message", "Unknown error")
-                    status_placeholder.empty()
-                    st.error(f"Error: {error_msg}")
+                    st.session_state.messages[assistant_idx]["content"] = f"Error: {error_msg}"
 
-            # Clear status and show final text
-            status_placeholder.empty()
-            st.session_state.streaming = False
-
-            if not had_error:
-                text_placeholder.markdown(full_text)
-                render_metadata(final_metadata, show_details)
-                render_feedback_buttons(assistant_idx)
-            else:
-                # Remove the placeholder message on error
-                if st.session_state.messages[assistant_idx]["content"] == "":
-                    st.session_state.messages.pop(assistant_idx)
+            # Remove empty placeholder on error with no content
+            if had_error and not st.session_state.messages[assistant_idx]["content"]:
+                st.session_state.messages.pop(assistant_idx)
 
         except Exception as e:
-            status_placeholder.empty()
-            st.session_state.streaming = False
             # Fall back to non-streaming on any streaming error
             try:
                 result = send_message(user_prompt, st.session_state.conversation_id)
                 response = result.get("response", "No response received.")
                 st.session_state.conversation_id = result.get("conversation_id")
-
-                text_placeholder.markdown(response)
 
                 metadata = {
                     "confidence": result.get("confidence"),
@@ -367,18 +355,19 @@ def send_and_display(user_prompt: str) -> None:
                     "token_usage": result.get("token_usage", {}),
                     "latency_ms": result.get("latency_ms"),
                 }
-                # Update the pre-allocated slot
                 st.session_state.messages[assistant_idx]["content"] = response
                 st.session_state.messages[assistant_idx]["metadata"] = metadata
 
-                render_metadata(metadata, show_details)
-                render_feedback_buttons(assistant_idx)
-
             except Exception as fallback_error:
-                st.error(f"Error communicating with backend: {fallback_error}")
-                # Remove empty placeholder on total failure
-                if st.session_state.messages[assistant_idx]["content"] == "":
-                    st.session_state.messages.pop(assistant_idx)
+                st.session_state.messages[assistant_idx]["content"] = f"Error: {fallback_error}"
+
+        finally:
+            st.session_state.streaming = False
+            st.session_state.streaming_msg_idx = None
+
+    # Rerun so the history loop renders everything cleanly
+    # (prevents doubled feedback buttons and stale-element opacity)
+    st.rerun()
 
 
 # ── Custom CSS for suggestion cards ─────────────────────────────────────────
