@@ -1,0 +1,216 @@
+/* ═══════════════════════════════════════════════════════════
+   ANIMATIONS — Keyframes + micro-interactions
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Keyframes ───────────────────────────────────────────── */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes slideInBottom {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dotPulse {
+  0%, 80%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  40% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes echoFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(0, 0);
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ── Animation utilities ─────────────────────────────────── */
+.animate-fade-in-up {
+  animation: fadeInUp var(--duration-slow) var(--ease-out-expo) forwards;
+  opacity: 0;
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-med) ease forwards;
+  opacity: 0;
+}
+
+.animate-message-in {
+  animation: messageIn var(--duration-med) var(--ease-out-expo) forwards;
+  opacity: 0;
+}
+
+/* Stagger delays */
+.delay-1 { animation-delay: 100ms; }
+.delay-2 { animation-delay: 200ms; }
+.delay-3 { animation-delay: 300ms; }
+.delay-4 { animation-delay: 400ms; }
+.delay-5 { animation-delay: 500ms; }
+.delay-6 { animation-delay: 600ms; }
+.delay-7 { animation-delay: 700ms; }
+.delay-8 { animation-delay: 800ms; }
+
+/* ── Echo stack entrance ─────────────────────────────────── */
+.echo-stack .echo-bg {
+  opacity: 0;
+  animation: echoFadeIn var(--duration-slow) var(--ease-out-expo) forwards;
+}
+
+.echo-stack .echo-bg-1 { animation-delay: 150ms; }
+.echo-stack .echo-bg-2 { animation-delay: 250ms; }
+.echo-stack .echo-bg-3 { animation-delay: 350ms; }
+.echo-stack .echo-bg-4 { animation-delay: 450ms; }
+
+/* ── Suggestion card entrance stagger ────────────────────── */
+.suggestion-card {
+  opacity: 0;
+  animation: fadeInUp var(--duration-slow) var(--ease-out-expo) forwards;
+}
+
+.suggestion-card:nth-child(1) { animation-delay: 400ms; }
+.suggestion-card:nth-child(2) { animation-delay: 500ms; }
+.suggestion-card:nth-child(3) { animation-delay: 600ms; }
+.suggestion-card:nth-child(4) { animation-delay: 700ms; }
+.suggestion-card:nth-child(5) { animation-delay: 800ms; }
+.suggestion-card:nth-child(6) { animation-delay: 900ms; }
+
+/* ── Message entrance ────────────────────────────────────── */
+.message-row.animate {
+  animation: messageIn var(--duration-med) var(--ease-out-expo) forwards;
+}
+
+/* ── Streaming cursor blink ──────────────────────────────── */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--text-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursorBlink 0.8s step-end infinite;
+}
+
+@keyframes cursorBlink {
+  50% { opacity: 0; }
+}
+
+/* ── Mobile sidebar ──────────────────────────────────────── */
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    transform: translateX(-100%);
+    box-shadow: none;
+    transition: transform var(--duration-med) var(--ease-out-expo),
+                box-shadow var(--duration-med) ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .sidebar-scrim {
+    display: block;
+  }
+
+  .menu-toggle {
+    display: flex;
+  }
+}
+
+/* ── Responsive cards ────────────────────────────────────── */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .suggestion-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+
+  .messages-container {
+    padding: var(--space-4);
+  }
+
+  .message-row {
+    max-width: 85vw;
+  }
+
+  .input-bar {
+    padding: var(--space-3) var(--space-4) var(--space-4);
+  }
+
+  .welcome {
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .echo-stack .echo-layer {
+    font-size: clamp(2rem, 10vw, 4rem);
+  }
+
+  .confidence-factors {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

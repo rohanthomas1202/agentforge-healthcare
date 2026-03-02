@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Async MariaDB connection pool for custom tables (care gaps, formulary, labs).
 
 These tables live in the same OpenEMR MariaDB database but are not part of
@@ -10,7 +12,7 @@ for the Docker Compose setup (mariadb host on internal network).
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import Any, Optional
 
 import aiomysql
 
@@ -26,7 +28,7 @@ _DB_CONFIG = {
     "autocommit": True,
 }
 
-_pool: aiomysql.Pool | None = None
+_pool: Optional[aiomysql.Pool] = None
 
 
 async def get_pool() -> aiomysql.Pool:

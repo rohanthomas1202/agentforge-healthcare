@@ -1,0 +1,102 @@
+/* ═══════════════════════════════════════════════════════════
+   TYPOGRAPHY — Clash Display + Satoshi
+   Fonts loaded via Fontshare CDN in index.html
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Display headings ────────────────────────────────────── */
+.heading-hero {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: clamp(3rem, 8vw, 7rem);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.heading-xl {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+
+.heading-lg {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 1.25rem;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+
+.heading-md {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 1rem;
+  letter-spacing: var(--tracking-tight);
+  line-height: var(--leading-snug);
+}
+
+/* ── Body text ───────────────────────────────────────────── */
+.body-text {
+  font-family: var(--font-body);
+  font-weight: var(--fw-medium);
+  font-size: 0.95rem;
+  line-height: var(--leading-relaxed);
+}
+
+.body-sm {
+  font-family: var(--font-body);
+  font-weight: var(--fw-medium);
+  font-size: 0.85rem;
+  line-height: var(--leading-normal);
+}
+
+/* ── Captions & labels ───────────────────────────────────── */
+.caption {
+  font-family: var(--font-body);
+  font-weight: var(--fw-medium);
+  font-size: 0.75rem;
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.label {
+  font-family: var(--font-body);
+  font-weight: var(--fw-bold);
+  font-size: 0.7rem;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Monospace ───────────────────────────────────────────── */
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* ── Sidebar text (on dark) ──────────────────────────────── */
+.sidebar-heading {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 1.1rem;
+  color: var(--text-inverse);
+  letter-spacing: var(--tracking-tight);
+}
+
+.sidebar-text {
+  font-family: var(--font-body);
+  font-weight: var(--fw-medium);
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.sidebar-label {
+  font-family: var(--font-body);
+  font-weight: var(--fw-bold);
+  font-size: 0.65rem;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}

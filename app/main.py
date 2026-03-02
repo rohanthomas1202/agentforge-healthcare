@@ -4,9 +4,12 @@ import logging
 import time as _time
 from contextlib import asynccontextmanager
 
+from pathlib import Path
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -142,3 +145,8 @@ app.add_middleware(RequestLoggingMiddleware)
 # Mount routers
 app.include_router(health_router, prefix="/api")  # Unauthenticated health checks
 app.include_router(router, prefix="/api")          # Authenticated endpoints
+
+# Mount new frontend as static files (must be last — catches all non-API routes)
+_frontend_v2_dir = Path(__file__).resolve().parent.parent / "frontend-v2"
+if _frontend_v2_dir.is_dir():
+    app.mount("/", StaticFiles(directory=str(_frontend_v2_dir), html=True), name="frontend")

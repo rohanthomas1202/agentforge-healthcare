@@ -1,0 +1,99 @@
+/* ═══════════════════════════════════════════════════════════
+   DESIGN TOKENS — Swiss-Brutalist System
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Colors ────────────────────────────────────────────── */
+  --bg-primary: #f2f2f2;
+  --bg-white: #ffffff;
+  --bg-dark: #1e1e1e;
+  --bg-dark-hover: rgba(255, 255, 255, 0.05);
+  --bg-dark-active: rgba(255, 255, 255, 0.1);
+
+  --text-primary: #111111;
+  --text-inverse: #ffffff;
+  --text-secondary: #838282;
+  --text-muted: #b6b5b5;
+  --text-dark-secondary: rgba(246, 246, 246, 0.6);
+
+  --border-light: #e0e0e0;
+  --border-dark: rgba(255, 255, 255, 0.05);
+
+  /* Echo stack layers */
+  --echo-1: #bfbfbf;
+  --echo-2: #c9c9c9;
+  --echo-3: #d1d1d1;
+  --echo-4: #d9d9d9;
+
+  /* Confidence colors */
+  --confidence-high: #2d8a4e;
+  --confidence-high-bg: rgba(45, 138, 78, 0.1);
+  --confidence-mid: #c77d1a;
+  --confidence-mid-bg: rgba(199, 125, 26, 0.1);
+  --confidence-low: #c43333;
+  --confidence-low-bg: rgba(196, 51, 51, 0.1);
+
+  /* Accent */
+  --accent-amber: #ffa726;
+  --accent-blue: #2a5a6a;
+
+  /* ── Typography ────────────────────────────────────────── */
+  --font-display: 'Clash Display', 'Arial Black', sans-serif;
+  --font-body: 'Satoshi', 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --tracking-tight: -0.05em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.05em;
+  --tracking-wider: 0.1em;
+
+  --leading-tight: 0.9;
+  --leading-snug: 1.1;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  --fw-medium: 500;
+  --fw-bold: 700;
+
+  /* ── Spacing (4px base) ────────────────────────────────── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* ── Timing ────────────────────────────────────────────── */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-smooth: cubic-bezier(0.77, 0, 0.175, 1);
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-med: 400ms;
+  --duration-slow: 700ms;
+
+  /* ── Layout ────────────────────────────────────────────── */
+  --sidebar-width: 280px;
+  --header-height: 72px;
+  --input-bar-height: 72px;
+  --max-message-width: 720px;
+
+  /* ── Radii ─────────────────────────────────────────────── */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 9999px;
+  --radius-msg-user: 20px 20px 4px 20px;
+  --radius-msg-bot: 20px 20px 20px 4px;
+
+  /* ── Shadows ───────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.12);
+}

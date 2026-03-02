@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentForge Healthcare</title>
+  <meta name="description" content="AI-powered clinical decision support built on OpenEMR">
+
+  <!-- Fonts: Clash Display + Satoshi from Fontshare -->
+  <link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+  <link href="https://api.fontshare.com/v2/css?f[]=clash-display@700&f[]=satoshi@500,700&display=swap" rel="stylesheet">
+
+  <!-- Styles (order matters: tokens → reset → type → layout → components → animations) -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/typography.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+
+  <!-- Favicon -->
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside id="sidebar" class="sidebar">
+
+      <!-- Logo -->
+      <div class="sidebar-header">
+        <div class="sidebar-logo">AGENTFORGE</div>
+        <div class="sidebar-logo-sub">Healthcare AI</div>
+        <div id="sidebar-health" class="sidebar-health">
+          <span class="health-dot" id="health-dot"></span>
+          <span id="health-text">Checking...</span>
+        </div>
+      </div>
+
+      <!-- New Chat -->
+      <div class="sidebar-actions">
+        <button id="new-chat-btn" class="btn-new-chat">+ New Conversation</button>
+      </div>
+
+      <!-- Conversations + Examples + Tools -->
+      <div class="sidebar-content">
+        <div id="conversation-list" class="conversation-list"></div>
+
+        <!-- Examples Section -->
+        <div class="sidebar-section" id="examples-section">
+          <div class="sidebar-section-header" id="examples-toggle">
+            <span class="section-title">Try an example</span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="sidebar-section-body" id="examples-body">
+            <div class="example-item" data-query="Give me a full clinical summary for patient John Smith">Patient Summary</div>
+            <div class="example-item" data-query="Check for drug interactions between Warfarin, Aspirin, and Metoprolol">Drug Interactions</div>
+            <div class="example-item" data-query="I have a patient with chest pain, shortness of breath, and dizziness. What conditions should I consider?">Symptom Analysis</div>
+            <div class="example-item" data-query="Find me a cardiologist">Find a Doctor</div>
+            <div class="example-item" data-query="What appointments are available with Dr. Wilson this week?">Appointments</div>
+            <div class="example-item" data-query="What are the FDA safety warnings for Metformin?">FDA Safety</div>
+            <div class="example-item" data-query="Check insurance coverage for patient John Smith">Insurance Check</div>
+            <div class="example-item" data-query="Analyze the latest lab results for patient John Smith">Lab Results</div>
+          </div>
+        </div>
+
+        <!-- Tools Section -->
+        <div class="sidebar-section" id="tools-section">
+          <div class="sidebar-section-header collapsed" id="tools-toggle">
+            <span class="section-title">14 Tools</span>
+            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="sidebar-section-body collapsed" id="tools-body">
+            <div class="tool-item"><span class="tool-icon">&#x1F4CB;</span> patient_summary</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F48A;</span> drug_interaction_check</div>
+            <div class="tool-item"><span class="tool-icon">&#x1FA7A;</span> symptom_lookup</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F468;&#x200D;&#x2695;&#xFE0F;</span> provider_search</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F4C5;</span> appointment_availability</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F6E1;</span> fda_drug_safety</div>
+            <div class="tool-item"><span class="tool-icon">&#x26A0;</span> drug_recall_check</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F52C;</span> clinical_trials_search</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F489;</span> allergy_check</div>
+            <div class="tool-item"><span class="tool-icon">&#x2764;</span> record_vitals</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F50D;</span> care_gap_analysis</div>
+            <div class="tool-item"><span class="tool-icon">&#x2705;</span> update_care_gap</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F3E5;</span> insurance_coverage_check</div>
+            <div class="tool-item"><span class="tool-icon">&#x1F9EA;</span> lab_results_analysis</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="sidebar-footer">
+        <div class="sidebar-attribution">Built with LangGraph + OpenEMR FHIR</div>
+        <div class="sidebar-disclaimer">For educational purposes only. Not for clinical decision-making.</div>
+      </div>
+    </aside>
+
+    <!-- Mobile scrim overlay -->
+    <div id="sidebar-scrim" class="sidebar-scrim"></div>
+
+    <!-- ═══ MAIN CONTENT ═══ -->
+    <main id="main" class="main">
+
+      <!-- Sticky chat header (visible in chat mode) -->
+      <header id="chat-header" class="chat-header hidden">
+        <button id="menu-toggle" class="menu-toggle" aria-label="Toggle sidebar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <span class="header-title">AgentForge Healthcare</span>
+        <div class="health-indicator">
+          <span class="health-dot" id="header-health-dot"></span>
+        </div>
+      </header>
+
+      <!-- Welcome / Hero (shown when no active conversation) -->
+      <section id="welcome" class="welcome">
+        <!-- Echo stack -->
+        <div class="echo-stack animate-fade-in-up">
+          <div class="echo-layer echo-bg echo-bg-4">AGENTFORGE</div>
+          <div class="echo-layer echo-bg echo-bg-3">AGENTFORGE</div>
+          <div class="echo-layer echo-bg echo-bg-2">AGENTFORGE</div>
+          <div class="echo-layer echo-bg echo-bg-1">AGENTFORGE</div>
+          <div class="echo-layer echo-front">AGENTFORGE</div>
+        </div>
+
+        <p class="welcome-subtitle animate-fade-in-up delay-2">
+          AI-powered clinical decision support built on OpenEMR
+        </p>
+
+        <!-- Disclaimer -->
+        <div class="disclaimer-banner animate-fade-in-up delay-3">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          <span>For educational purposes only. Not intended for clinical decision-making.</span>
+        </div>
+
+        <!-- Suggestion cards -->
+        <div id="suggestion-cards" class="suggestion-grid">
+          <!-- Rendered by welcome.js -->
+        </div>
+      </section>
+
+      <!-- Chat (shown when conversation is active) -->
+      <section id="chat" class="chat hidden">
+        <div id="messages" class="messages-container"></div>
+
+        <div class="input-bar">
+          <div class="input-wrapper">
+            <textarea
+              id="chat-input"
+              placeholder="Ask about patients, medications, symptoms, or providers..."
+              rows="1"
+              autocomplete="off"
+            ></textarea>
+          </div>
+          <button id="send-btn" class="btn-send" aria-label="Send message" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- App (ES modules) -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
