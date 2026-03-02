@@ -96,4 +96,49 @@
   --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
   --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.08);
   --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.12);
+
+  /* ── Theme transition ──────────────────────────────────── */
+  --theme-transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DARK MODE — Token overrides
+   ═══════════════════════════════════════════════════════════ */
+
+[data-theme="dark"] {
+  /* ── Colors ────────────────────────────────────────────── */
+  --bg-primary: #0e0e0e;
+  --bg-white: #1a1a1a;
+  --bg-dark: #111111;
+  --bg-dark-hover: rgba(255, 255, 255, 0.06);
+  --bg-dark-active: rgba(255, 255, 255, 0.12);
+
+  --text-primary: #e8e8e8;
+  --text-inverse: #0e0e0e;
+  --text-secondary: #8a8a8a;
+  --text-muted: #5a5a5a;
+  --text-dark-secondary: rgba(200, 200, 200, 0.6);
+
+  --border-light: #2a2a2a;
+  --border-dark: rgba(255, 255, 255, 0.08);
+
+  /* Echo stack layers (inverted for dark bg) */
+  --echo-1: #3a3a3a;
+  --echo-2: #333333;
+  --echo-3: #2c2c2c;
+  --echo-4: #252525;
+
+  /* Confidence colors (slightly brighter for dark bg) */
+  --confidence-high: #3dab64;
+  --confidence-high-bg: rgba(61, 171, 100, 0.15);
+  --confidence-mid: #e0952a;
+  --confidence-mid-bg: rgba(224, 149, 42, 0.15);
+  --confidence-low: #e04848;
+  --confidence-low-bg: rgba(224, 72, 72, 0.15);
+
+  /* Shadows (stronger for dark mode) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.5);
 }

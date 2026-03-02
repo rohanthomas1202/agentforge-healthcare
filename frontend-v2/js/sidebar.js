@@ -25,11 +25,10 @@ export function initSidebar({ onSelect, onNew, onExample }) {
   });
 
   // Collapsible sections
-  setupCollapsible('examples-toggle', 'examples-body');
   setupCollapsible('tools-toggle', 'tools-body');
 
-  // Example items
-  document.querySelectorAll('.example-item').forEach(el => {
+  // Tool buttons → send example prompt
+  document.querySelectorAll('.tool-item[data-query]').forEach(el => {
     el.addEventListener('click', () => {
       const query = el.dataset.query;
       if (query) {

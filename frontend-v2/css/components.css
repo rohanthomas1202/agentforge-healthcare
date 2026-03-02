@@ -283,33 +283,54 @@
   margin-top: 0;
 }
 
-.example-item {
+/* ── TOOL GROUP LABELS ──────────────────────────────────── */
+.tool-group-label {
+  font-family: var(--font-body);
+  font-weight: var(--fw-bold);
+  font-size: 0.65rem;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  padding: var(--space-2) var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.tool-group-label:first-child {
+  margin-top: 0;
+}
+
+.tool-group-label.required {
+  color: #3dab64;
+}
+
+.tool-group-label.bonus {
+  color: #e0952a;
+}
+
+/* ── TOOL BUTTONS (clickable example prompts) ──────────── */
+.tool-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-sm);
-  font-size: 0.8rem;
-  color: var(--text-muted);
+  font-size: 0.78rem;
+  color: #b6b5b5;
+  text-align: left;
   cursor: pointer;
   transition: background var(--duration-fast) ease,
               color var(--duration-fast) ease;
 }
 
-.example-item:hover {
+.tool-item:hover {
   background: var(--bg-dark-hover);
-  color: var(--text-inverse);
-}
-
-.tool-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) var(--space-3);
-  font-size: 0.78rem;
-  color: var(--text-secondary);
+  color: #ffffff;
 }
 
 .tool-item .tool-icon {
   font-size: 0.9rem;
   width: 20px;
+  min-width: 20px;
   text-align: center;
 }
 
@@ -693,4 +714,180 @@
   margin-top: var(--space-2);
   font-size: 0.75rem;
   color: var(--text-secondary);
+}
+
+/* ── THEME TOGGLE ────────────────────────────────────────── */
+.sidebar-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b6b5b5;
+  transition: color var(--duration-fast) ease,
+              background var(--duration-fast) ease;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.theme-toggle:hover {
+  color: var(--text-inverse);
+  background: var(--bg-dark-hover);
+}
+
+/* Default: hide sun, show moon (light mode default — click moon to go dark) */
+.theme-icon-sun {
+  display: none;
+}
+
+.theme-icon-sun,
+.theme-icon-moon {
+  transition: transform var(--duration-med) var(--ease-out-expo);
+}
+
+.theme-toggle:hover .theme-icon-sun,
+.theme-toggle:hover .theme-icon-moon {
+  transform: rotate(20deg);
+}
+
+/* ── DARK MODE COMPONENT OVERRIDES ───────────────────────── */
+
+/* Smooth transition on theme switch */
+body,
+.sidebar,
+.main,
+.chat-header,
+.message-bubble,
+.input-wrapper,
+.suggestion-card,
+.btn-new-chat,
+.btn-send,
+.disclaimer-banner,
+.verification-section,
+.meta-disclaimer {
+  transition: var(--theme-transition);
+}
+
+/* User message bubble in dark mode — slightly lighter bg */
+[data-theme="dark"] .message-bubble.user {
+  background: #e8e8e8;
+  color: #0e0e0e;
+}
+
+/* Code blocks inside assistant messages */
+[data-theme="dark"] .message-bubble code {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .message-bubble pre {
+  background: #111111;
+  color: #e8e8e8;
+  border: 1px solid var(--border-light);
+}
+
+/* Suggestion card hover */
+[data-theme="dark"] .suggestion-card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Card icon background */
+[data-theme="dark"] .suggestion-card .card-icon {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Input wrapper focus ring */
+[data-theme="dark"] .input-wrapper:focus-within {
+  border-color: #e8e8e8;
+  box-shadow: 0 0 0 3px rgba(232, 232, 232, 0.08);
+}
+
+/* Send button */
+[data-theme="dark"] .btn-send {
+  background: #e8e8e8;
+  color: #0e0e0e;
+}
+
+/* New chat button */
+[data-theme="dark"] .btn-new-chat {
+  background: #e8e8e8;
+  color: #0e0e0e;
+}
+
+[data-theme="dark"] .btn-new-chat:hover {
+  background: #ffffff;
+  color: #0e0e0e;
+}
+
+/* Verification section bg */
+[data-theme="dark"] .verification-section {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Feedback button hover */
+[data-theme="dark"] .feedback-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Disclaimer banner */
+[data-theme="dark"] .disclaimer-banner {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-light);
+}
+
+/* Chat header */
+[data-theme="dark"] .chat-header {
+  background: rgba(14, 14, 14, 0.9);
+  border-bottom-color: var(--border-light);
+}
+
+/* ── Sidebar elements: always on dark bg, so keep text light ── */
+[data-theme="dark"] .sidebar-logo-sub {
+  color: #8a8a8a;
+}
+
+[data-theme="dark"] .conversation-item .conv-title {
+  color: #b6b5b5;
+}
+
+[data-theme="dark"] .conversation-item.active .conv-title {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .conversation-item.active {
+  border-left-color: #ffffff;
+}
+
+[data-theme="dark"] .sidebar-section-header .section-title,
+[data-theme="dark"] .sidebar-section-header .section-chevron {
+  color: #8a8a8a;
+}
+
+[data-theme="dark"] .tool-item {
+  color: #b6b5b5;
+}
+
+[data-theme="dark"] .tool-item:hover {
+  color: #ffffff;
+}
+
+[data-theme="dark"] .sidebar-health,
+[data-theme="dark"] .sidebar-disclaimer,
+[data-theme="dark"] .sidebar-attribution {
+  color: #8a8a8a;
+}
+
+/* Scrollbar in dark mode */
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #3a3a3a;
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #4a4a4a;
 }

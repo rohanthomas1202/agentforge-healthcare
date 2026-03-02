@@ -33,7 +33,7 @@
   font-family: var(--font-display);
   font-weight: var(--fw-bold);
   font-size: 1.2rem;
-  color: var(--text-inverse);
+  color: #ffffff;
   letter-spacing: var(--tracking-tight);
   margin-bottom: var(--space-1);
 }
@@ -98,6 +98,7 @@
   background: rgba(242, 242, 242, 0.9);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--border-light);
   z-index: 50;
 }

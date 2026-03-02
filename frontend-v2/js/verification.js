@@ -29,15 +29,15 @@ export function renderVerification(container, meta) {
   // Tool calls
   if (meta.tool_calls?.length > 0) {
     const names = meta.tool_calls.map(t => t.tool || t.name).filter(Boolean).join(', ');
-    html.push(`<span class="meta-tools">${names}</span>`);
+    html.push(`<span class="meta-tools">${escapeHtml(names)}</span>`);
   }
 
   // Performance
   const perfParts = [];
-  if (meta.latency_ms) perfParts.push(`<span>${formatLatency(meta.latency_ms)}</span>`);
+  if (meta.latency_ms) perfParts.push(formatLatency(meta.latency_ms));
   if (meta.token_usage) {
     const total = (meta.token_usage.input || 0) + (meta.token_usage.output || 0);
-    if (total > 0) perfParts.push(`<span>${total.toLocaleString()} tokens</span>`);
+    if (total > 0) perfParts.push(`${total.toLocaleString()} tokens`);
   }
   if (perfParts.length > 0) {
     html.push(`<span class="meta-performance">${perfParts.join(' · ')}</span>`);
@@ -79,12 +79,37 @@ export function renderVerification(container, meta) {
             <span>${passed ? 'No critical interactions detected' : 'Issues flagged'}</span>
           </div>
       `);
-      if (ds.flagged_interactions?.length > 0) {
-        for (const fi of ds.flagged_interactions) {
+      if (ds.flags?.length > 0) {
+        for (const fi of ds.flags) {
           html.push(`
             <div class="verification-item" style="padding-left: var(--space-5)">
               <span style="color: var(--confidence-mid)">&#x26A0;</span>
-              <span><strong>${escapeHtml(fi.severity || 'Warning')}</strong>: ${escapeHtml(fi.reason || fi.description || JSON.stringify(fi))}</span>
+              <span><strong>${escapeHtml(fi.severity || 'Warning')}</strong>: ${escapeHtml(fi.reason || fi.description || fi.message || JSON.stringify(fi))}</span>
+            </div>
+          `);
+        }
+      }
+      html.push('</div>');
+    }
+
+    // Allergy safety
+    if (v.allergy_safety) {
+      const as = v.allergy_safety;
+      const passed = as.passed !== false;
+      html.push(`
+        <div class="verification-section">
+          <div class="verification-section-title">Allergy Safety</div>
+          <div class="verification-item">
+            <span>${passed ? '&#x2705;' : '&#x274C;'}</span>
+            <span>${passed ? 'No allergy conflicts detected' : 'Allergy conflicts flagged'}</span>
+          </div>
+      `);
+      if (as.flags?.length > 0) {
+        for (const fi of as.flags) {
+          html.push(`
+            <div class="verification-item" style="padding-left: var(--space-5)">
+              <span style="color: var(--confidence-low)">&#x26A0;</span>
+              <span><strong>${escapeHtml(fi.severity || 'Warning')}</strong>: ${escapeHtml(fi.reason || fi.description || fi.message || JSON.stringify(fi))}</span>
             </div>
           `);
         }
@@ -95,22 +120,23 @@ export function renderVerification(container, meta) {
     // Confidence scoring breakdown
     if (v.confidence_scoring) {
       const cs = v.confidence_scoring;
+      const factors = cs.factors || cs; // factors nested under .factors
       html.push(`
         <div class="verification-section">
           <div class="verification-section-title">Confidence Factors</div>
           <div class="confidence-factors">
       `);
 
-      const factors = [
-        { label: 'Tools', key: 'tools_used', fallback: 'tool_score' },
-        { label: 'Data', key: 'data_richness', fallback: 'data_score' },
-        { label: 'Hedging', key: 'response_hedging', fallback: 'hedging_score' },
-        { label: 'Errors', key: 'tool_error_rate', fallback: 'error_score' },
+      const factorDefs = [
+        { label: 'Tools', key: 'tools_used' },
+        { label: 'Data', key: 'data_richness' },
+        { label: 'Hedging', key: 'response_hedging' },
+        { label: 'Errors', key: 'tool_error_rate' },
       ];
 
-      for (const f of factors) {
-        let val = cs[f.key] ?? cs[f.fallback] ?? null;
-        if (val !== null) {
+      for (const f of factorDefs) {
+        const val = factors[f.key];
+        if (val != null) {
           const pct = Math.round(val * 100);
           html.push(`
             <div class="confidence-factor">
@@ -135,21 +161,24 @@ export function renderVerification(container, meta) {
 
       if (cv.grounding_rate != null) {
         const rate = Math.round(cv.grounding_rate * 100);
+        const grounded = cv.grounded_claims ?? '?';
+        const total = cv.total_claims ?? '?';
         html.push(`
           <div class="verification-item">
             <span>&#x1F4CA;</span>
-            <span>Claims grounded: <strong>${cv.grounded_count ?? '?'}/${cv.total_claims ?? '?'}</strong> (${rate}%)</span>
+            <span>Claims grounded: <strong>${grounded}/${total}</strong> (${rate}%)</span>
           </div>
         `);
       }
 
-      if (cv.claims?.length > 0) {
-        for (const claim of cv.claims) {
+      if (cv.details?.length > 0) {
+        for (const claim of cv.details) {
           const icon = claim.grounded ? '&#x2705;' : '&#x274C;';
+          const source = claim.source_tool ? ` <span class="caption">[${escapeHtml(claim.source_tool)}]</span>` : '';
           html.push(`
             <div class="verification-item" style="padding-left: var(--space-5)">
               <span>${icon}</span>
-              <span>${escapeHtml(claim.text || claim.claim || '')}</span>
+              <span>${escapeHtml(claim.claim || claim.text || '')}${source}</span>
             </div>
           `);
         }
@@ -182,7 +211,6 @@ export function renderVerification(container, meta) {
       const panel = document.getElementById(panelId);
       if (!panel) return;
 
-      const isExpanded = toggleBtn.classList.contains('expanded');
       toggleBtn.classList.toggle('expanded');
       panel.classList.toggle('expanded');
     });

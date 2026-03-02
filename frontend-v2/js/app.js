@@ -7,6 +7,7 @@ import { checkHealth } from './api.js';
 import { initSidebar, updateHealth, loadConversations } from './sidebar.js';
 import { initWelcome } from './welcome.js';
 import { initChat, sendQuery, loadConversation, clearChat } from './chat.js';
+import { initTheme } from './theme.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
   // ── View switching ──────────────────────────────────────
@@ -21,6 +22,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Initialize modules ──────────────────────────────────
+
+  // Theme: dark/light mode
+  initTheme();
 
   // Welcome: suggestion cards trigger sendQuery
   initWelcome((query) => sendQuery(query));

@@ -29,8 +29,16 @@
 
       <!-- Logo -->
       <div class="sidebar-header">
-        <div class="sidebar-logo">AGENTFORGE</div>
-        <div class="sidebar-logo-sub">Healthcare AI</div>
+        <div class="sidebar-header-top">
+          <div>
+            <div class="sidebar-logo">AGENTFORGE</div>
+            <div class="sidebar-logo-sub">Healthcare AI</div>
+          </div>
+          <button id="theme-toggle" class="theme-toggle" aria-label="Toggle dark mode" title="Toggle dark mode">
+            <svg class="theme-icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+            <svg class="theme-icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          </button>
+        </div>
         <div id="sidebar-health" class="sidebar-health">
           <span class="health-dot" id="health-dot"></span>
           <span id="health-text">Checking...</span>
@@ -46,45 +54,32 @@
       <div class="sidebar-content">
         <div id="conversation-list" class="conversation-list"></div>
 
-        <!-- Examples Section -->
-        <div class="sidebar-section" id="examples-section">
-          <div class="sidebar-section-header" id="examples-toggle">
-            <span class="section-title">Try an example</span>
-            <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-          </div>
-          <div class="sidebar-section-body" id="examples-body">
-            <div class="example-item" data-query="Give me a full clinical summary for patient John Smith">Patient Summary</div>
-            <div class="example-item" data-query="Check for drug interactions between Warfarin, Aspirin, and Metoprolol">Drug Interactions</div>
-            <div class="example-item" data-query="I have a patient with chest pain, shortness of breath, and dizziness. What conditions should I consider?">Symptom Analysis</div>
-            <div class="example-item" data-query="Find me a cardiologist">Find a Doctor</div>
-            <div class="example-item" data-query="What appointments are available with Dr. Wilson this week?">Appointments</div>
-            <div class="example-item" data-query="What are the FDA safety warnings for Metformin?">FDA Safety</div>
-            <div class="example-item" data-query="Check insurance coverage for patient John Smith">Insurance Check</div>
-            <div class="example-item" data-query="Analyze the latest lab results for patient John Smith">Lab Results</div>
-          </div>
-        </div>
-
-        <!-- Tools Section -->
+        <!-- Tools Section — Required (green) + Bonus (golden) -->
         <div class="sidebar-section" id="tools-section">
-          <div class="sidebar-section-header collapsed" id="tools-toggle">
+          <div class="sidebar-section-header" id="tools-toggle">
             <span class="section-title">14 Tools</span>
             <svg class="section-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
-          <div class="sidebar-section-body collapsed" id="tools-body">
-            <div class="tool-item"><span class="tool-icon">&#x1F4CB;</span> patient_summary</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F48A;</span> drug_interaction_check</div>
-            <div class="tool-item"><span class="tool-icon">&#x1FA7A;</span> symptom_lookup</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F468;&#x200D;&#x2695;&#xFE0F;</span> provider_search</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F4C5;</span> appointment_availability</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F6E1;</span> fda_drug_safety</div>
-            <div class="tool-item"><span class="tool-icon">&#x26A0;</span> drug_recall_check</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F52C;</span> clinical_trials_search</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F489;</span> allergy_check</div>
-            <div class="tool-item"><span class="tool-icon">&#x2764;</span> record_vitals</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F50D;</span> care_gap_analysis</div>
-            <div class="tool-item"><span class="tool-icon">&#x2705;</span> update_care_gap</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F3E5;</span> insurance_coverage_check</div>
-            <div class="tool-item"><span class="tool-icon">&#x1F9EA;</span> lab_results_analysis</div>
+          <div class="sidebar-section-body" id="tools-body">
+
+            <div class="tool-group-label required">Required Tools</div>
+            <button class="tool-item tool-required" data-query="Give me a full clinical summary for patient John Smith"><span class="tool-icon">&#x1F4CB;</span> patient_summary</button>
+            <button class="tool-item tool-required" data-query="Check for drug interactions between Warfarin, Aspirin, and Metoprolol"><span class="tool-icon">&#x1F48A;</span> drug_interaction_check</button>
+            <button class="tool-item tool-required" data-query="I have a patient with chest pain, shortness of breath, and dizziness. What conditions should I consider?"><span class="tool-icon">&#x1FA7A;</span> symptom_lookup</button>
+            <button class="tool-item tool-required" data-query="Find me a cardiologist"><span class="tool-icon">&#x1F468;&#x200D;&#x2695;&#xFE0F;</span> provider_search</button>
+            <button class="tool-item tool-required" data-query="What appointments are available with Dr. Wilson this week?"><span class="tool-icon">&#x1F4C5;</span> appointment_availability</button>
+
+            <div class="tool-group-label bonus">Bonus Tools</div>
+            <button class="tool-item tool-bonus" data-query="What are the FDA safety warnings for Metformin?"><span class="tool-icon">&#x1F6E1;</span> fda_drug_safety</button>
+            <button class="tool-item tool-bonus" data-query="Check for any recent drug recalls on Metformin"><span class="tool-icon">&#x26A0;</span> drug_recall_check</button>
+            <button class="tool-item tool-bonus" data-query="Find clinical trials for Type 2 Diabetes treatments"><span class="tool-icon">&#x1F52C;</span> clinical_trials_search</button>
+            <button class="tool-item tool-bonus" data-query="Check allergies for patient John Smith before prescribing Amoxicillin"><span class="tool-icon">&#x1F489;</span> allergy_check</button>
+            <button class="tool-item tool-bonus" data-query="Record vitals for patient John Smith: BP 120/80, HR 72, Temp 98.6"><span class="tool-icon">&#x2764;</span> record_vitals</button>
+            <button class="tool-item tool-bonus" data-query="Analyze care gaps for patient John Smith"><span class="tool-icon">&#x1F50D;</span> care_gap_analysis</button>
+            <button class="tool-item tool-bonus" data-query="Mark the flu vaccination care gap as completed for patient John Smith"><span class="tool-icon">&#x2705;</span> update_care_gap</button>
+            <button class="tool-item tool-bonus" data-query="Check insurance coverage for patient John Smith"><span class="tool-icon">&#x1F3E5;</span> insurance_coverage_check</button>
+            <button class="tool-item tool-bonus" data-query="Analyze the latest lab results for patient John Smith"><span class="tool-icon">&#x1F9EA;</span> lab_results_analysis</button>
+
           </div>
         </div>
       </div>
