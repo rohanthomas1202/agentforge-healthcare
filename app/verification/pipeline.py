@@ -47,6 +47,7 @@ def run_verification_pipeline(
     response_text: str,
     messages: list,
     tool_calls: list[dict],
+    tool_outputs: list[dict] | None = None,
 ) -> dict:
     """Run all verification checks and return enriched metadata.
 
@@ -57,6 +58,8 @@ def run_verification_pipeline(
         response_text: The final LLM response text.
         messages: Full LangGraph message list (BaseMessage subclasses).
         tool_calls: Already-extracted tool call log [{"tool": name, "args": {...}}].
+        tool_outputs: Pre-extracted tool outputs (used by streaming path).
+                      If None, extracts from messages.
 
     Returns:
         {
@@ -70,8 +73,9 @@ def run_verification_pipeline(
             },
         }
     """
-    # Extract tool outputs from message history
-    tool_outputs = _extract_tool_outputs(messages)
+    # Extract tool outputs from message history (or use pre-extracted)
+    if tool_outputs is None:
+        tool_outputs = _extract_tool_outputs(messages)
 
     # Run each verifier independently with safe fallbacks
     try:

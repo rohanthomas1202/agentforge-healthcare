@@ -469,6 +469,7 @@ async def run_agent_stream(
     t_start = time.time()
     full_text = ""
     tool_calls: list[dict] = []
+    tool_outputs: list[dict] = []
 
     try:
         async for event in _agent_graph.astream_events(initial_state, version="v2"):
@@ -480,6 +481,16 @@ async def run_agent_stream(
                 tool_input = event.get("data", {}).get("input", {})
                 tool_calls.append({"tool": tool_name, "args": tool_input})
                 yield _sse("tool_call", {"tool": tool_name, "args": tool_input})
+
+            # Tool end events — capture output for verification
+            elif kind == "on_tool_end":
+                tool_name = event.get("name", "unknown")
+                output = event.get("data", {}).get("output", "")
+                tool_outputs.append({
+                    "tool_name": tool_name,
+                    "output": str(output),
+                    "tool_call_id": "",
+                })
 
             # Streaming tokens from the chat model
             elif kind == "on_chat_model_stream":
@@ -547,6 +558,7 @@ async def run_agent_stream(
         response_text=full_text,
         messages=[],
         tool_calls=tool_calls,
+        tool_outputs=tool_outputs,
     )
 
     # Persist conversation
