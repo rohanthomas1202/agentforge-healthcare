@@ -154,21 +154,24 @@
 
 /* ── Input bar ───────────────────────────────────────────── */
 .input-bar {
-  padding: var(--space-4) var(--space-8) var(--space-6);
+  padding: var(--space-4) 0 var(--space-6);
   display: flex;
   align-items: flex-end;
-  gap: var(--space-3);
   flex-shrink: 0;
+  max-width: 780px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .input-wrapper {
   flex: 1;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  gap: var(--space-2);
   background: var(--bg-white);
   border: 1.5px solid var(--border-light);
   border-radius: var(--radius-pill);
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
   transition: border-color var(--duration-normal) ease,
               box-shadow var(--duration-normal) ease;
   min-height: 48px;
@@ -195,9 +198,9 @@
 }
 
 .btn-send {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   background: var(--text-primary);
   color: var(--text-inverse);
@@ -207,6 +210,7 @@
   transition: transform var(--duration-normal) var(--ease-out-expo),
               opacity var(--duration-normal) ease;
   opacity: 0.3;
+  flex-shrink: 0;
 }
 
 .btn-send.active {

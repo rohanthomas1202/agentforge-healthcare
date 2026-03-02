@@ -11,15 +11,15 @@
   <link href="https://api.fontshare.com/v2/css?f[]=clash-display@700&f[]=satoshi@500,700&display=swap" rel="stylesheet">
 
   <!-- Styles (order matters: tokens → reset → type → layout → components → animations) -->
-  <link rel="stylesheet" href="css/tokens.css?v=6">
-  <link rel="stylesheet" href="css/reset.css?v=6">
-  <link rel="stylesheet" href="css/typography.css?v=6">
-  <link rel="stylesheet" href="css/layout.css?v=6">
-  <link rel="stylesheet" href="css/components.css?v=6">
-  <link rel="stylesheet" href="css/animations.css?v=6">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/reset.css">
+  <link rel="stylesheet" href="css/typography.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
 
   <!-- Favicon -->
-  <link rel="icon" href="assets/favicon.svg?v=6" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 </head>
 <body>
   <div class="app">
@@ -153,18 +153,18 @@
             rows="1"
             autocomplete="off"
           ></textarea>
+          <button id="send-btn" class="btn-send" aria-label="Send message" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="19" x2="12" y2="5"></line>
+              <polyline points="5 12 12 5 19 12"></polyline>
+            </svg>
+          </button>
         </div>
-        <button id="send-btn" class="btn-send" aria-label="Send message" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="12" y1="19" x2="12" y2="5"></line>
-            <polyline points="5 12 12 5 19 12"></polyline>
-          </svg>
-        </button>
       </div>
     </main>
   </div>
 
   <!-- App (ES modules) -->
-  <script type="module" src="js/app.js?v=6"></script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
