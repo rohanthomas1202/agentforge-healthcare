@@ -81,7 +81,7 @@
   --sidebar-width: 280px;
   --header-height: 72px;
   --input-bar-height: 72px;
-  --max-message-width: 720px;
+  --max-message-width: 90%;
 
   /* ── Radii ─────────────────────────────────────────────── */
   --radius-sm: 6px;
